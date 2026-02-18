@@ -114,9 +114,10 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .case-control select { font-family: var(--font-display); font-size: 12px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
 
 .bar-chart { display: flex; align-items: flex-end; gap: 2px; height: 180px; background: var(--surface2); border-radius: 10px; padding: 12px 8px 26px; border: 1px solid var(--border); overflow: visible; }
-.bar { flex: 1; border-radius: 3px 3px 0 0; transition: height 0.06s, background 0.06s, transform 0.12s; background: var(--accent-light); min-width: 3px; }
+.bar { flex: 1; max-width: 28px; border-radius: 3px 3px 0 0; transition: height 0.06s, background 0.06s, transform 0.12s; background: var(--accent-light); min-width: 3px; }
 /* Show numeric labels on counting sort bars and highlight the active one. */
-#bars-counting .bar { display: flex; align-items: flex-end; justify-content: center; }
+#bars-counting.bar-chart { padding-left: 12px; padding-right: 12px; }
+#bars-counting .bar { display: flex; align-items: flex-end; justify-content: center; max-width: 72px; }
 #bars-counting .bar-label { display: block; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); padding-top: 2px; pointer-events: none; }
 #bars-counting .bar.comparing .bar-label,
 #bars-counting .bar.swapping .bar-label { color: #dc2626; font-weight: 600; }
@@ -127,9 +128,15 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
   --merge-right: #0891b2;
   --merge-run-sorted: rgba(22,163,74,0.34);
 }
-/* Merge sort needs extra vertical space so "pulled down" ranges don't feel squished. */
-#bars-merge.bar-chart{ height: 240px; padding-bottom: 44px; }
+/* Merge sort: main array + subarray rows below. */
+.merge-visual-wrap { display: flex; flex-direction: column; gap: 12px; }
+#bars-merge.bar-chart{ height: 200px; padding-bottom: 44px; }
 #bars-merge .bar.down{ transform: translateY(28px); }
+.merge-subarrays-wrap { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.merge-subarray-row { display: flex; align-items: center; gap: 10px; }
+.merge-subarray-row .merge-row-label { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); min-width: 72px; }
+.merge-subarray-row .merge-row-bars { display: flex; align-items: flex-end; gap: 2px; height: 56px; background: var(--surface2); border-radius: 8px; padding: 6px 8px; border: 1px solid var(--border); flex: 1; }
+.merge-subarray-row .merge-row-bars .bar { flex: 1; max-width: 20px; min-width: 2px; border-radius: 2px 2px 0 0; transition: height 0.06s, background 0.06s; }
 .bar.comparing { background: #eab308 !important; }
 .bar.swapping { background: #dc2626 !important; }
 .bar.sorted { background: #16a34a !important; }
@@ -191,7 +198,9 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .bucket-chip.swapping { background: #dc2626 !important; border-color: #b91c1c !important; color: white !important; font-weight: 600; }
 .bucket-chip.sorted { background: #16a34a !important; border-color: #15803d !important; color: white !important; font-weight: 600; }
 .count-array { display: flex; flex-wrap: wrap; gap: 6px; }
+.counting-aux-row .count-array { flex-wrap: nowrap; }
 .count-cell { min-width: 46px; padding: 4px 6px; border-radius: 6px; background: var(--surface3); border: 1px solid var(--border); text-align: center; }
+.counting-aux-row .count-cell { flex: 1 1 0; min-width: 52px; }
 .count-cell-key { display: block; font-size: 10px; font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
 .count-cell-val { display: block; font-size: 12px; font-family: var(--font-mono); color: var(--text); }
 .count-cell.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37,99,235,0.14); }

@@ -71,7 +71,7 @@ const conceptDefaults={
 function setConcept(algo,text){const el=$('concept-'+algo);if(el)el.textContent=text}
 
 function clearAuxPanels(nm){
-  if(nm==='merge'){const e=$('merge-subarrays');if(e)e.textContent='Current split/merge subarrays will appear here during the run.'}
+  if(nm==='merge'){const e=$('merge-subarrays');if(e)e.innerHTML='';}
   if(nm==='bucket'){const e=$('bucket-board');if(e)e.textContent='Buckets and their elements will appear here during the run.'}
   if(nm==='counting'){
     const c=$('counting-count'),p=$('counting-pos');
@@ -96,9 +96,28 @@ function setMergeLegend(leftCls,rightCls){
   }
 }
 
-function renderMergePanel(label,left,right){
+function renderMergePanel(left,right,merged,highlight){
   const e=$('merge-subarrays');if(!e)return;
-  e.textContent=label+' Left: ['+left.join(', ')+'] | Right: ['+right.join(', ')+']';
+  e.innerHTML='';
+  const wrap=arr=>Array.isArray(arr)?arr:[];
+  const leftArr=wrap(left),rightArr=wrap(right),mergedArr=merged!=null?wrap(merged):null;
+  const allVals=[...leftArr,...rightArr,...(mergedArr||[])];
+  const scaleMax=allVals.length?Math.max(...allVals,1):1;
+  function addRow(label,values,bgColor,compareIdx){
+    const row=document.createElement('div');row.className='merge-subarray-row';
+    const lbl=document.createElement('span');lbl.className='merge-row-label';lbl.textContent=label;row.appendChild(lbl);
+    const barCont=document.createElement('div');barCont.className='merge-row-bars';
+    values.forEach((v,idx)=>{
+      const b=document.createElement('div');b.className='bar';
+      b.style.height=(v/scaleMax*100)+'%';if(bgColor)b.style.background=bgColor;
+      if(compareIdx===idx)b.classList.add('comparing');
+      barCont.appendChild(b);
+    });
+    row.appendChild(barCont);e.appendChild(row);
+  }
+  addRow('Left:',leftArr,'var(--merge-left)',highlight&&typeof highlight.leftIdx==='number'?highlight.leftIdx:-1);
+  addRow('Right:',rightArr,'var(--merge-right)',highlight&&typeof highlight.rightIdx==='number'?highlight.rightIdx:-1);
+  if(mergedArr!==null)addRow('Merged:',mergedArr,'var(--merge-run-sorted)',-1);
 }
 
 function renderBucketLegend(k){
@@ -550,7 +569,7 @@ async function go(nm){
         setConcept('merge','Splitting range ['+l+'..'+r+'] into ['+l+'..'+m+'] and ['+(m+1)+'..'+r+'] at depth '+d+'.');
         msBuildBg({l,m,r});
         render('merge',{bg:msBg});
-        renderMergePanel('Split:',arr.slice(l,m+1),arr.slice(m+1,r+1));
+        renderMergePanel(arr.slice(l,m+1),arr.slice(m+1,r+1),null);
         await sleepControlled(nm,Math.max(12,delay(nm)));
       }
 
@@ -558,33 +577,40 @@ async function go(nm){
       await ms(l,m,d+1);
       setMergeActive(m+1,r);
       await ms(m+1,r,d+1);
-      const L=arr.slice(l,m+1),R=arr.slice(m+1,r+1);let i=0,j=0,k=l;
-      setConcept('merge','Merging two sorted halves: ['+l+'..'+m+'] and ['+(m+1)+'..'+r+'] at depth '+d+'.');
-      renderMergePanel('Merge:',L,R);
+      const L=arr.slice(l,m+1),R=arr.slice(m+1,r+1);
+      setConcept('merge','Merging two sorted halves: ['+l+'..'+m+'] and ['+(m+1)+'..'+r+'] at depth '+d+'. Building a new merged array below.');
+      renderMergePanel(L,R,[]);
       setMergeActive(l,r);
       msBuildBg({l,m,r});
       render('merge',{bg:msBg});
       await sleepControlled(nm,Math.max(10,delay(nm)*0.6));
 
+      const merged=[];
+      let i=0,j=0;
       while(i<L.length&&j<R.length&&!X()){
         comps++;setT('comps-merge',comps);
+        renderMergePanel(L,R,merged,{leftIdx:i,rightIdx:j});
         render('merge',{cmp:new Set([l+i,m+1+j]),bg:msBg});
         await sleepControlled(nm,delay(nm));
-        if(L[i]<=R[j]){arr[k]=L[i];i++}else{arr[k]=R[j];j++}
-        swaps++;k++;setT('swaps-merge',swaps);
-        render('merge',{sw:new Set([k-1]),bg:msBg});
+        if(L[i]<=R[j]){merged.push(L[i]);i++}else{merged.push(R[j]);j++}
+        swaps++;setT('swaps-merge',swaps);
+        renderMergePanel(L,R,merged);
+        render('merge',{sw:new Set([l+merged.length-1]),bg:msBg});
         await sleepControlled(nm,delay(nm));
       }
       while(i<L.length&&!X()){
-        arr[k]=L[i];i++;k++;swaps++;setT('swaps-merge',swaps);
-        render('merge',{sw:new Set([k-1]),bg:msBg});
+        renderMergePanel(L,R,merged,{leftIdx:i,rightIdx:-1});
+        merged.push(L[i]);i++;swaps++;setT('swaps-merge',swaps);
+        render('merge',{sw:new Set([l+merged.length-1]),bg:msBg});
         await sleepControlled(nm,delay(nm));
       }
       while(j<R.length&&!X()){
-        arr[k]=R[j];j++;k++;swaps++;setT('swaps-merge',swaps);
-        render('merge',{sw:new Set([k-1]),bg:msBg});
+        renderMergePanel(L,R,merged,{leftIdx:-1,rightIdx:j});
+        merged.push(R[j]);j++;swaps++;setT('swaps-merge',swaps);
+        render('merge',{sw:new Set([l+merged.length-1]),bg:msBg});
         await sleepControlled(nm,delay(nm));
       }
+      for(let t=0;t<merged.length;t++)arr[l+t]=merged[t];
 
       // This range is now a sorted run; keep it visually distinct from unsorted regions.
       for(let t=l;t<=r;t++)runSorted[t]=true;
