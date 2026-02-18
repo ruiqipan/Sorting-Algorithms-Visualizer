@@ -35,7 +35,7 @@ Just click the live link above:
 
 Open `index.html` (or `sorting-algorithms.html`) in your browser.
 
-### Option 2: Serve with a local web server (recommended)
+### Option 3: Serve with a local web server (recommended)
 
 Some browsers apply stricter rules when opening local files directly; running a local server avoids that.
 
@@ -50,7 +50,9 @@ Then visit `http://localhost:8000/` (or `http://localhost:8000/sorting-algorithm
 
 ```text
 .
-├── sorting-algorithms.html   # Entire app (HTML + CSS + JavaScript)
+├── sorting-algorithms.html   # Main HTML page
+├── sorting-algorithms.css    # Styles for the visualizer UI
+├── sorting-algorithms.js     # All visualization + algorithm logic
 └── README.md
 ```
 
