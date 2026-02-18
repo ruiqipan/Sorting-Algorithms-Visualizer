@@ -642,7 +642,9 @@ function renderBucketBoard(labelPrefix,buckets,ranges,colors,highlight){
       const chip=document.createElement('div');
       chip.className='bucket-chip';
       chip.textContent=String(v);
-      if(highlight&&highlight.bucketIdx===i){
+      if(highlight&&highlight.sortedBuckets&&highlight.sortedBuckets.has(i)){
+        chip.classList.add('sorted');
+      }else if(highlight&&highlight.bucketIdx===i){
         if(highlight.sorted&&highlight.sorted.has(idx))chip.classList.add('sorted');
         else if(highlight.swapping&&highlight.swapping.has(idx))chip.classList.add('swapping');
         else if(highlight.comparing&&highlight.comparing.has(idx))chip.classList.add('comparing');
@@ -1183,34 +1185,38 @@ async function go(nm){
     }
     let maxBs=0;buckets.forEach(b=>{if(b.length>maxBs)maxBs=b.length});setT('x2-bucket',maxBs);
     setConcept('bucket','Sorting step: sorting each bucket (insertion sort works well on small buckets).');
+    const sortedBucketIndices=new Set();
     for(let bi=0;bi<k&&!X();bi++){
       const b=buckets[bi];
-      if(b.length>1){
+      if(b.length<=1){
+        sortedBucketIndices.add(bi);
+        renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{sortedBuckets:sortedBucketIndices});
+      }else if(b.length>1){
         setConcept('bucket','Sorting bucket '+String.fromCharCode(65+(bi%26))+' with insertion sort (size '+b.length+').');
-        renderBucketBoard('Bucket',buckets,bucketRanges,bcols);
+        renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{sortedBuckets:sortedBucketIndices});
         await sleepControlled(nm,Math.max(8,delay(nm)*0.4));
-        const sorted=new Set([0]);
+        const noSortedYet=new Set();
         for(let i=1;i<b.length&&!X();i++){
           let key=b[i],j=i-1;
           setConcept('bucket','Inserting '+key+' into sorted prefix of bucket '+String.fromCharCode(65+(bi%26))+'.');
-          renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{bucketIdx:bi,comparing:new Set([i]),sorted:sorted});
+          renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{bucketIdx:bi,comparing:new Set([i]),sorted:noSortedYet,sortedBuckets:sortedBucketIndices});
           await sleepControlled(nm,Math.max(6,delay(nm)*0.3));
           while(j>=0&&b[j]>key&&!X()){
             setConcept('bucket','Comparing '+key+' with '+b[j]+' in bucket '+String.fromCharCode(65+(bi%26))+'; shifting right.');
-            renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{bucketIdx:bi,comparing:new Set([j,j+1]),sorted:sorted});
+            renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{bucketIdx:bi,comparing:new Set([j,j+1]),sorted:noSortedYet,sortedBuckets:sortedBucketIndices});
             await sleepControlled(nm,Math.max(6,delay(nm)*0.3));
             b[j+1]=b[j];
-            renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{bucketIdx:bi,swapping:new Set([j+1]),sorted:sorted});
+            renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{bucketIdx:bi,swapping:new Set([j+1]),sorted:noSortedYet,sortedBuckets:sortedBucketIndices});
             await sleepControlled(nm,Math.max(6,delay(nm)*0.3));
             j--;
           }
           b[j+1]=key;
-          sorted.add(j+1);
-          renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{bucketIdx:bi,sorted:sorted});
+          renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{bucketIdx:bi,sorted:noSortedYet,sortedBuckets:sortedBucketIndices});
           await sleepControlled(nm,Math.max(6,delay(nm)*0.3));
         }
         setConcept('bucket','Bucket '+String.fromCharCode(65+(bi%26))+' is now sorted.');
-        renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{bucketIdx:bi,sorted:new Set(Array.from({length:b.length},(_,idx)=>idx))});
+        sortedBucketIndices.add(bi);
+        renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{bucketIdx:bi,sorted:new Set(Array.from({length:b.length},(_,idx)=>idx)),sortedBuckets:sortedBucketIndices});
         await sleepControlled(nm,Math.max(8,delay(nm)*0.4));
       }
     }
