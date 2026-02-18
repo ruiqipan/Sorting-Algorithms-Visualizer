@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sorting Algorithms Visualizer</title>
+<meta name="title" content="Sorting Algorithms Visualizer">
+<meta property="og:title" content="Sorting Algorithms Visualizer">
+<meta name="twitter:title" content="Sorting Algorithms Visualizer">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f3ef;
+    --surface: #ffffff;
+    --surface2: #f0ede8;
+    --surface3: #e6e2db;
+    --border: #d5d0c8;
+    --text: #1a1a1a;
+    --text-dim: #5c5c5c;
+    --text-muted: #8a8a8a;
+    --accent: #4338ca;
+    --accent-light: #6366f1;
+    --accent-bg: rgba(99,102,241,0.07);
+    --green: #16a34a;
+    --green-bg: rgba(22,163,74,0.08);
+    --yellow: #b45309;
+    --yellow-bg: rgba(180,83,9,0.08);
+    --orange: #c2410c;
+    --red: #dc2626;
+    --red-bg: rgba(220,38,38,0.07);
+    --cyan: #0891b2;
+    --cyan-bg: rgba(8,145,178,0.07);
+    --pink: #be185d;
+    --best: #16a34a;
+    --avg: #b45309;
+    --worst: #dc2626;
+    --radius: 12px;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-display: 'Outfit', sans-serif;
+    --font-body: 'Source Serif 4', Georgia, serif;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.07);
+    --shadow-lg: 0 8px 30px rgba(0,0,0,0.08);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 16px; line-height: 1.7; overflow-x: hidden; }
+  ::selection { background: var(--accent); color: white; }
+
+  .hero { position: relative; padding: 72px 40px 52px; text-align: center; overflow: hidden; border-bottom: 1px solid var(--border); background: linear-gradient(180deg, #fff 0%, var(--bg) 100%); }
+  .hero::before { content: ''; position: absolute; inset: -40%; width: 180%; height: 180%; background: radial-gradient(ellipse at 35% 40%, rgba(99,102,241,0.07) 0%, transparent 55%), radial-gradient(ellipse at 70% 60%, rgba(8,145,178,0.05) 0%, transparent 55%); pointer-events: none; }
+  .hero-content { position: relative; z-index: 1; max-width: 750px; margin: 0 auto; }
+  .hero h1 { font-family: var(--font-display); font-size: clamp(2.4rem,5.5vw,3.8rem); font-weight: 900; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 14px; background: linear-gradient(135deg, var(--text) 0%, var(--accent) 60%, var(--cyan) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .hero p { color: var(--text-dim); font-size: 1.08rem; max-width: 520px; margin: 0 auto; }
+
+  .nav-bar { position: sticky; top: 0; z-index: 100; background: rgba(245,243,239,0.88); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-bottom: 1px solid var(--border); padding: 0 16px; overflow-x: auto; scrollbar-width: none; }
+  .nav-bar::-webkit-scrollbar { display: none; }
+  .nav-inner { display: flex; gap: 12px; max-width: 1200px; margin: 0 auto; padding: 8px 0; justify-content: center; align-items: center; flex-wrap: wrap; }
+  .nav-main { display: flex; gap: 4px; padding: 3px; background: var(--surface); border-radius: 999px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+  .nav-algos { display: flex; gap: 4px; flex-wrap: wrap; }
+  .nav-divider { width: 1px; height: 26px; background: rgba(148,163,184,0.7); }
+  .nav-btn { font-family: var(--font-display); font-size: 13px; font-weight: 600; padding: 7px 15px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--text-dim); cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+  .nav-main .nav-btn { border-radius: 999px; padding: 7px 18px; }
+  .nav-algos .nav-btn { background: transparent; border-radius: 7px; }
+  .nav-btn:hover { background: var(--surface); color: var(--text); border-color: var(--border); }
+  .nav-btn.active { background: var(--accent); color: white; box-shadow: 0 2px 10px rgba(67,56,202,0.25); }
+
+  .main { max-width: 1000px; margin: 0 auto; padding: 36px 24px 100px; }
+  .algo-section { display: none; animation: fadeIn 0.3s ease; }
+  .algo-section.visible { display: block; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+  .algo-header { margin-bottom: 36px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+  .algo-header h2 { font-family: var(--font-display); font-size: 2.1rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .algo-tags { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
+  .tag { font-family: var(--font-mono); font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 6px; }
+  .tag-stable { background: var(--green-bg); color: var(--green); border: 1px solid rgba(22,163,74,0.2); }
+  .tag-unstable { background: var(--red-bg); color: var(--red); border: 1px solid rgba(220,38,38,0.2); }
+  .tag-inplace { background: var(--cyan-bg); color: var(--cyan); border: 1px solid rgba(8,145,178,0.2); }
+  .tag-not-inplace { background: var(--yellow-bg); color: var(--yellow); border: 1px solid rgba(180,83,9,0.2); }
+  .tag-comparison { background: var(--accent-bg); color: var(--accent); border: 1px solid rgba(99,102,241,0.2); }
+  .tag-noncomparison { background: rgba(190,24,93,0.07); color: var(--pink); border: 1px solid rgba(190,24,93,0.2); }
+  .tag-adaptive { background: rgba(194,65,12,0.07); color: var(--orange); border: 1px solid rgba(194,65,12,0.2); }
+
+  .block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 26px; margin-bottom: 22px; box-shadow: var(--shadow-sm); }
+  .block h3 { font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; margin-bottom: 14px; color: var(--accent); display: flex; align-items: center; gap: 8px; }
+  .block h3 .icon { font-size: 1.15rem; }
+  .block p { color: var(--text); margin-bottom: 12px; }
+  .block p:last-child { margin-bottom: 0; }
+  .block p strong { color: var(--accent); font-weight: 600; }
+
+  .complexity-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 8px; }
+  .complexity-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center; transition: transform 0.2s, box-shadow 0.2s; }
+  .complexity-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .complexity-card .label { font-family: var(--font-display); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 8px; }
+  .complexity-card .value { font-family: var(--font-mono); font-size: 1.1rem; font-weight: 700; }
+  .complexity-card .value.best { color: var(--best); }
+  .complexity-card .value.avg { color: var(--avg); }
+  .complexity-card .value.worst { color: var(--worst); }
+  .complexity-card .value.space { color: var(--cyan); }
+  .complexity-card .reason { font-size: 12px; color: var(--text-dim); margin-top: 6px; line-height: 1.45; font-family: var(--font-body); }
+
+  .steps-container { display: flex; flex-direction: column; gap: 11px; margin-top: 12px; }
+  .step { display: flex; gap: 14px; align-items: flex-start; }
+  .step-num { font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--accent); background: var(--accent-bg); border: 1px solid rgba(99,102,241,0.2); width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+  .step-text { font-size: 15px; color: var(--text); line-height: 1.65; }
+  .step-text code { font-family: var(--font-mono); font-size: 13px; background: var(--surface2); padding: 2px 7px; border-radius: 4px; color: var(--accent); border: 1px solid var(--border); }
+
+  .use-cases { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .use-case { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-size: 14px; color: var(--text); display: flex; align-items: flex-start; gap: 10px; line-height: 1.5; }
+  .use-case .marker { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+
+  .insight-box { background: linear-gradient(135deg, rgba(99,102,241,0.06), rgba(8,145,178,0.04)); border: 1px solid rgba(99,102,241,0.18); border-radius: var(--radius); padding: 18px 22px; margin-top: 14px; }
+  .insight-box .insight-label { font-family: var(--font-display); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 6px; }
+  .insight-box p { font-size: 14.5px; color: var(--text); line-height: 1.7; }
+
+  .demo-controls { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  .demo-btn { font-family: var(--font-display); font-size: 13px; font-weight: 600; padding: 7px 18px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; transition: all 0.15s; }
+  .demo-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+  .speed-control { display: flex; align-items: center; gap: 6px; font-family: var(--font-display); font-size: 12px; color: var(--text-dim); }
+  .speed-control input[type="range"] { width: 90px; accent-color: var(--accent); }
+
+  .bar-chart { display: flex; align-items: flex-end; gap: 2px; height: 180px; background: var(--surface2); border-radius: 10px; padding: 12px 8px; border: 1px solid var(--border); }
+  .bar { flex: 1; border-radius: 3px 3px 0 0; transition: height 0.06s, background 0.06s; background: var(--accent-light); min-width: 3px; }
+  .bar.comparing { background: #eab308 !important; }
+  .bar.swapping { background: #dc2626 !important; }
+  .bar.sorted { background: #16a34a !important; }
+  .bar.pivot { background: #be185d !important; }
+  .bar.bucket0 { background: #6366f1 !important; }
+  .bar.bucket1 { background: #0891b2 !important; }
+  .bar.bucket2 { background: #16a34a !important; }
+  .bar.bucket3 { background: #b45309 !important; }
+  .bar.bucket4 { background: #dc2626 !important; }
+
+  .demo-stats { display: flex; gap: 18px; margin-top: 10px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 12.5px; color: var(--text-dim); }
+  .demo-stats span strong { color: var(--text); }
+
+  .concept-panel { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: var(--surface2); border: 1px dashed var(--border); font-size: 13px; color: var(--text-dim); font-family: var(--font-display); text-align: left; }
+  .aux-panel { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); font-size: 12.5px; color: var(--text-dim); font-family: var(--font-mono); overflow-x: auto; }
+  .bucket-board { display: flex; flex-wrap: wrap; gap: 8px; }
+  .bucket-col { min-width: 92px; padding: 6px 8px; border-radius: 8px; background: var(--surface3); border: 1px solid var(--border); }
+  .bucket-col-title { font-family: var(--font-display); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 4px; }
+  .bucket-items { display: flex; flex-wrap: wrap; gap: 4px; }
+  .bucket-chip { padding: 2px 6px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); font-size: 11px; color: var(--text); }
+  .count-array { display: flex; flex-wrap: wrap; gap: 6px; }
+  .count-cell { min-width: 46px; padding: 4px 6px; border-radius: 6px; background: var(--surface3); border: 1px solid var(--border); text-align: center; }
+  .count-cell-key { display: block; font-size: 10px; font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+  .count-cell-val { display: block; font-size: 12px; font-family: var(--font-mono); color: var(--text); }
+
+  .comparison-table-wrapper { overflow-x: auto; margin-top: 10px; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+  .comparison-table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 800px; }
+  .comparison-table th { font-family: var(--font-display); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); padding: 12px 14px; text-align: left; background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .comparison-table td { padding: 11px 14px; border-bottom: 1px solid rgba(213,208,200,0.6); font-family: var(--font-mono); font-size: 12.5px; color: var(--text); white-space: nowrap; background: var(--surface); }
+  .comparison-table tr:hover td { background: var(--accent-bg); }
+  .comparison-table .algo-name { font-family: var(--font-display); font-weight: 700; font-size: 13.5px; color: var(--accent); }
+  .comparison-table .best-cell { color: var(--best); }
+  .comparison-table .avg-cell { color: var(--avg); }
+  .comparison-table .worst-cell { color: var(--worst); }
+  .comparison-table .space-cell { color: var(--cyan); }
+
+  .overview-intro { font-size: 1.05rem; color: var(--text); margin-bottom: 28px; line-height: 1.8; }
+  .overview-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; margin-top: 18px; }
+  .overview-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; cursor: pointer; transition: all 0.25s; position: relative; overflow: hidden; box-shadow: var(--shadow-sm); }
+  .overview-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent); opacity: 0; transition: opacity 0.25s; }
+  .overview-card:hover { border-color: var(--accent-light); transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+  .overview-card:hover::before { opacity: 1; }
+  .overview-card h4 { font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; margin-bottom: 5px; }
+  .overview-card .summary { font-size: 13.5px; color: var(--text-dim); line-height: 1.5; margin-bottom: 10px; }
+  .overview-card .mini-complexity { font-family: var(--font-mono); font-size: 11.5px; display: flex; gap: 14px; color: var(--text-muted); }
+  .overview-card .mini-complexity span { display: flex; gap: 4px; align-items: center; white-space: nowrap; }
+  .overview-card .mini-complexity .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .overview-card .mini-complexity .dot.best-dot { background: var(--best); }
+  .overview-card .mini-complexity .dot.avg-dot { background: var(--avg); }
+  .overview-card .mini-complexity .dot.worst-dot { background: var(--worst); }
+
+  .case-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); }
+  .case-legend .item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .case-legend .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .case-legend .dot.best { background: var(--best); }
+  .case-legend .dot.avg { background: var(--avg); }
+  .case-legend .dot.worst { background: var(--worst); }
+  .case-legend .dot.space { background: var(--cyan); }
+
+  @media (max-width: 700px) { .complexity-grid { grid-template-columns: 1fr 1fr; } .use-cases { grid-template-columns: 1fr; } .hero { padding: 44px 18px 36px; } .main { padding: 20px 14px 80px; } .block { padding: 18px; } }
+  @media (max-width: 480px) { .complexity-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="hero"><div class="hero-content"><h1>Sorting Algorithms Visualizer</h1><p>An interactive study guide covering how each algorithm works, complexity analysis, and when to use which sort.</p></div></div>
+
+<nav class="nav-bar"><div class="nav-inner" id="nav">
+  <div class="nav-main">
+    <button class="nav-btn active" data-target="overview">Overview</button>
+    <button class="nav-btn" data-target="compare">Compare All</button>
+  </div>
+  <div class="nav-divider"></div>
+  <div class="nav-algos">
+    <button class="nav-btn" data-target="insertion">Insertion</button>
+    <button class="nav-btn" data-target="selection">Selection</button>
+    <button class="nav-btn" data-target="bubble">Bubble</button>
+    <button class="nav-btn" data-target="merge">Merge</button>
+    <button class="nav-btn" data-target="quick">Quick</button>
+    <button class="nav-btn" data-target="heap">Heap</button>
+    <button class="nav-btn" data-target="counting">Counting</button>
+    <button class="nav-btn" data-target="radix">Radix</button>
+    <button class="nav-btn" data-target="bucket">Bucket</button>
+  </div>
+</div></nav>
+
+<main class="main" id="content">
+
+<!-- =============== OVERVIEW =============== -->
+<section class="algo-section visible" id="sec-overview">
+  <div class="algo-header"><h2>Overview</h2></div>
+  <p class="overview-intro">Sorting algorithms are fundamental building blocks in computer science. Understanding their trade-offs — time complexity, space usage, stability, and adaptivity — lets you pick the right tool for each problem. Click any card below to explore that algorithm in detail.</p>
+  <div class="block"><h3><span class="icon">📊</span> Quick Comparison</h3>
+    <div class="comparison-table-wrapper"><table class="comparison-table"><thead><tr><th>Algorithm</th><th>Best</th><th>Average</th><th>Worst</th><th>Space</th><th>Stable?</th></tr></thead><tbody>
+      <tr><td class="algo-name">Insertion Sort</td><td class="best-cell">O(n)</td><td class="avg-cell">O(n²)</td><td class="worst-cell">O(n²)</td><td class="space-cell">O(1)</td><td>Yes</td></tr>
+      <tr><td class="algo-name">Selection Sort</td><td class="best-cell">O(n²)</td><td class="avg-cell">O(n²)</td><td class="worst-cell">O(n²)</td><td class="space-cell">O(1)</td><td>No</td></tr>
+      <tr><td class="algo-name">Bubble Sort</td><td class="best-cell">O(n)</td><td class="avg-cell">O(n²)</td><td class="worst-cell">O(n²)</td><td class="space-cell">O(1)</td><td>Yes</td></tr>
+      <tr><td class="algo-name">Merge Sort</td><td class="best-cell">O(n log n)</td><td class="avg-cell">O(n log n)</td><td class="worst-cell">O(n log n)</td><td class="space-cell">O(n)</td><td>Yes</td></tr>
+      <tr><td class="algo-name">Quick Sort</td><td class="best-cell">O(n log n)</td><td class="avg-cell">O(n log n)</td><td class="worst-cell">O(n²)</td><td class="space-cell">O(log n)</td><td>No</td></tr>
+      <tr><td class="algo-name">Heap Sort</td><td class="best-cell">O(n log n)</td><td class="avg-cell">O(n log n)</td><td class="worst-cell">O(n log n)</td><td class="space-cell">O(1)</td><td>No</td></tr>
+      <tr><td class="algo-name">Counting Sort</td><td class="best-cell">O(n+k)</td><td class="avg-cell">O(n+k)</td><td class="worst-cell">O(n+k)</td><td class="space-cell">O(n+k)</td><td>Yes</td></tr>
+      <tr><td class="algo-name">Radix Sort</td><td class="best-cell">O(d(n+k))</td><td class="avg-cell">O(d(n+k))</td><td class="worst-cell">O(d(n+k))</td><td class="space-cell">O(n+k)</td><td>Yes</td></tr>
+      <tr><td class="algo-name">Bucket Sort</td><td class="best-cell">O(n+k)</td><td class="avg-cell">O(n+k)</td><td class="worst-cell">O(n²)</td><td class="space-cell">O(n+k)</td><td>Yes*</td></tr>
+    </tbody></table></div>
+    <div class="case-legend" aria-label="Complexity color legend">
+      <span class="item"><span class="dot best"></span>Best case</span>
+      <span class="item"><span class="dot avg"></span>Average case</span>
+      <span class="item"><span class="dot worst"></span>Worst case</span>
+      <span class="item"><span class="dot space"></span>Space</span>
+    </div>
+  </div>
+  <div class="overview-cards" id="overview-cards">
+    <div class="overview-card" data-algo="insertion"><h4>Insertion Sort</h4><p class="summary">Builds the sorted array one element at a time by inserting each into its correct position. Simple, adaptive, great for small or nearly-sorted data.</p><div class="mini-complexity"><span><span class="dot best-dot"></span>O(n)</span><span><span class="dot avg-dot"></span>O(n²)</span><span><span class="dot worst-dot"></span>O(n²)</span></div></div>
+    <div class="overview-card" data-algo="selection"><h4>Selection Sort</h4><p class="summary">Repeatedly finds the minimum and places it at the end of the sorted portion. Always O(n²), but minimizes swaps.</p><div class="mini-complexity"><span><span class="dot best-dot"></span>O(n²)</span><span><span class="dot avg-dot"></span>O(n²)</span><span><span class="dot worst-dot"></span>O(n²)</span></div></div>
+    <div class="overview-card" data-algo="bubble"><h4>Bubble Sort</h4><p class="summary">Repeatedly swaps adjacent out-of-order elements. Simple to understand, rarely used in practice.</p><div class="mini-complexity"><span><span class="dot best-dot"></span>O(n)</span><span><span class="dot avg-dot"></span>O(n²)</span><span><span class="dot worst-dot"></span>O(n²)</span></div></div>
+    <div class="overview-card" data-algo="merge"><h4>Merge Sort</h4><p class="summary">Divide-and-conquer: split, sort halves, merge. Guaranteed O(n log n) every time.</p><div class="mini-complexity"><span><span class="dot best-dot"></span>O(n log n)</span><span><span class="dot avg-dot"></span>O(n log n)</span><span><span class="dot worst-dot"></span>O(n log n)</span></div></div>
+    <div class="overview-card" data-algo="quick"><h4>Quick Sort</h4><p class="summary">Partition around a pivot, recurse on both sides. Fastest comparison sort in practice.</p><div class="mini-complexity"><span><span class="dot best-dot"></span>O(n log n)</span><span><span class="dot avg-dot"></span>O(n log n)</span><span><span class="dot worst-dot"></span>O(n²)</span></div></div>
+    <div class="overview-card" data-algo="heap"><h4>Heap Sort</h4><p class="summary">Build a max-heap, repeatedly extract the max. O(n log n) guaranteed with O(1) space.</p><div class="mini-complexity"><span><span class="dot best-dot"></span>O(n log n)</span><span><span class="dot avg-dot"></span>O(n log n)</span><span><span class="dot worst-dot"></span>O(n log n)</span></div></div>
+    <div class="overview-card" data-algo="counting"><h4>Counting Sort</h4><p class="summary">Non-comparison: count value occurrences. Linear time when range k is small.</p><div class="mini-complexity"><span><span class="dot best-dot"></span>O(n+k)</span><span><span class="dot avg-dot"></span>O(n+k)</span><span><span class="dot worst-dot"></span>O(n+k)</span></div></div>
+    <div class="overview-card" data-algo="radix"><h4>Radix Sort</h4><p class="summary">Sort digit-by-digit with a stable sub-sort. Beats O(n log n) for fixed-width integers.</p><div class="mini-complexity"><span><span class="dot best-dot"></span>O(d(n+k))</span><span><span class="dot avg-dot"></span>O(d(n+k))</span><span><span class="dot worst-dot"></span>O(d(n+k))</span></div></div>
+    <div class="overview-card" data-algo="bucket"><h4>Bucket Sort</h4><p class="summary">Distribute into buckets, sort each, concatenate. Excellent for uniform distributions.</p><div class="mini-complexity"><span><span class="dot best-dot"></span>O(n+k)</span><span><span class="dot avg-dot"></span>O(n+k)</span><span><span class="dot worst-dot"></span>O(n²)</span></div></div>
+  </div>
+</section>
+
+<!-- =============== INSERTION =============== -->
+<section class="algo-section" id="sec-insertion">
+  <div class="algo-header"><h2>Insertion Sort</h2><div class="algo-tags"><span class="tag tag-comparison">Comparison</span><span class="tag tag-stable">Stable</span><span class="tag tag-inplace">In-Place</span><span class="tag tag-adaptive">Adaptive</span></div></div>
+  <div class="block"><h3><span class="icon">⚙️</span> How It Works</h3><p>Think of sorting a hand of playing cards. You pick up one card at a time and slide it into the correct position among the cards you've already sorted.</p><div class="steps-container"><div class="step"><div class="step-num">1</div><div class="step-text">Start from the second element. The first element is trivially "sorted."</div></div><div class="step"><div class="step-num">2</div><div class="step-text">Store the current element as <code>key</code>. Compare it with each element to its left.</div></div><div class="step"><div class="step-num">3</div><div class="step-text">Shift all elements larger than <code>key</code> one position right to open a gap.</div></div><div class="step"><div class="step-num">4</div><div class="step-text">Insert <code>key</code> into the gap. Move to the next unsorted element and repeat.</div></div></div></div>
+  <div class="block"><h3><span class="icon">📐</span> Complexity Analysis</h3><div class="complexity-grid"><div class="complexity-card"><div class="label">Best Case</div><div class="value best">O(n)</div><div class="reason">Already sorted — inner loop never executes, just one comparison per element.</div></div><div class="complexity-card"><div class="label">Average Case</div><div class="value avg">O(n²)</div><div class="reason">Each element compared with half the sorted portion: Σ(i/2) ≈ n²/4.</div></div><div class="complexity-card"><div class="label">Worst Case</div><div class="value worst">O(n²)</div><div class="reason">Reverse-sorted — every element shifts all the way to position 0: Σi = n(n−1)/2.</div></div><div class="complexity-card"><div class="label">Space</div><div class="value space">O(1)</div><div class="reason">Only a temp variable for the key. Sorts in-place.</div></div></div></div>
+  <div class="block"><h3><span class="icon">🎯</span> When To Use</h3><div class="use-cases"><div class="use-case"><span class="marker">✅</span>Small arrays (n ≤ ~50) — low overhead beats faster algorithms.</div><div class="use-case"><span class="marker">✅</span>Nearly sorted data — runs in near-linear time.</div><div class="use-case"><span class="marker">✅</span>Online sorting — can sort elements as they arrive.</div><div class="use-case"><span class="marker">✅</span>As a base case in Timsort and Introsort.</div><div class="use-case"><span class="marker">⛔</span>Large random datasets — O(n²) is impractical.</div><div class="use-case"><span class="marker">⛔</span>Adversarial data needing worst-case guarantees.</div></div><div class="insight-box"><div class="insight-label">💡 Key Insight</div><p>Runtime is proportional to the number of <strong>inversions</strong> — pairs (i,j) where i&lt;j but A[i]&gt;A[j]. O(n) inversions → O(n) time. This is why Timsort uses insertion sort for small runs.</p></div></div>
+  <div class="block"><h3><span class="icon">▶️</span> Visual Demo</h3><div class="demo-controls"><button class="demo-btn" onclick="go('insertion')">Run</button><button class="demo-btn" onclick="reset('insertion')">Reset</button><div class="speed-control"><span>Speed:</span><input type="range" min="1" max="100" value="50" id="speed-insertion"></div></div><div class="bar-chart" id="bars-insertion"></div><div class="demo-stats"><span>n = <strong id="n-insertion">40</strong></span><span>Comparisons: <strong id="comps-insertion">0</strong></span><span>Shifts: <strong id="swaps-insertion">0</strong></span><span>Inversions: <strong id="x1-insertion">–</strong></span></div><div class="concept-panel" id="concept-insertion">Press Run to watch insertion sort build the sorted prefix one key at a time.</div></div>
+</section>
+
+<!-- =============== SELECTION =============== -->
+<section class="algo-section" id="sec-selection">
+  <div class="algo-header"><h2>Selection Sort</h2><div class="algo-tags"><span class="tag tag-comparison">Comparison</span><span class="tag tag-unstable">Unstable</span><span class="tag tag-inplace">In-Place</span></div></div>
+  <div class="block"><h3><span class="icon">⚙️</span> How It Works</h3><p>Repeatedly find the smallest element in the unsorted region and swap it with the first unsorted element.</p><div class="steps-container"><div class="step"><div class="step-num">1</div><div class="step-text">Scan the unsorted portion to find the minimum.</div></div><div class="step"><div class="step-num">2</div><div class="step-text">Swap the minimum with the first unsorted element.</div></div><div class="step"><div class="step-num">3</div><div class="step-text">The sorted/unsorted boundary shifts right by one.</div></div><div class="step"><div class="step-num">4</div><div class="step-text">Repeat until sorted.</div></div></div></div>
+  <div class="block"><h3><span class="icon">📐</span> Complexity Analysis</h3><div class="complexity-grid"><div class="complexity-card"><div class="label">Best Case</div><div class="value best">O(n²)</div><div class="reason">Always scans the full unsorted portion — no early termination.</div></div><div class="complexity-card"><div class="label">Average Case</div><div class="value avg">O(n²)</div><div class="reason">Always n(n−1)/2 comparisons, regardless of input.</div></div><div class="complexity-card"><div class="label">Worst Case</div><div class="value worst">O(n²)</div><div class="reason">Same as best/average — comparison count is fixed.</div></div><div class="complexity-card"><div class="label">Space</div><div class="value space">O(1)</div><div class="reason">Only a min-index variable and a temp. Fully in-place.</div></div></div></div>
+  <div class="block"><h3><span class="icon">🎯</span> When To Use</h3><div class="use-cases"><div class="use-case"><span class="marker">✅</span>When minimizing swaps is critical — at most n−1 swaps (e.g., flash memory).</div><div class="use-case"><span class="marker">✅</span>Small arrays where simplicity matters.</div><div class="use-case"><span class="marker">⛔</span>Nearly sorted data — can't adapt.</div><div class="use-case"><span class="marker">⛔</span>Large datasets — always quadratic.</div></div><div class="insight-box"><div class="insight-label">💡 Key Insight</div><p>Not adaptive — always the same comparison count. But performs at most <strong>n−1 swaps</strong>, optimal for swap count. Unstable because the long-range swap can reorder equal elements.</p></div></div>
+  <div class="block"><h3><span class="icon">▶️</span> Visual Demo</h3><div class="demo-controls"><button class="demo-btn" onclick="go('selection')">Run</button><button class="demo-btn" onclick="reset('selection')">Reset</button><div class="speed-control"><span>Speed:</span><input type="range" min="1" max="100" value="50" id="speed-selection"></div></div><div class="bar-chart" id="bars-selection"></div><div class="demo-stats"><span>n = <strong id="n-selection">40</strong></span><span>Comparisons: <strong id="comps-selection">0</strong></span><span>Swaps: <strong id="swaps-selection">0</strong></span></div><div class="concept-panel" id="concept-selection">Press Run to watch selection sort grow the sorted prefix by repeatedly selecting the minimum.</div></div>
+</section>
+
+<!-- =============== BUBBLE =============== -->
+<section class="algo-section" id="sec-bubble">
+  <div class="algo-header"><h2>Bubble Sort</h2><div class="algo-tags"><span class="tag tag-comparison">Comparison</span><span class="tag tag-stable">Stable</span><span class="tag tag-inplace">In-Place</span><span class="tag tag-adaptive">Adaptive</span></div></div>
+  <div class="block"><h3><span class="icon">⚙️</span> How It Works</h3><p>Walk through the array comparing adjacent pairs, swapping if out of order. The largest unsorted element "bubbles up" each pass.</p><div class="steps-container"><div class="step"><div class="step-num">1</div><div class="step-text">Compare A[0] and A[1]. If <code>A[0] > A[1]</code>, swap.</div></div><div class="step"><div class="step-num">2</div><div class="step-text">Continue for each adjacent pair through the array.</div></div><div class="step"><div class="step-num">3</div><div class="step-text">After one pass, the largest is at the end. Shrink unsorted region.</div></div><div class="step"><div class="step-num">4</div><div class="step-text">If no swaps in a pass, stop early — array is sorted.</div></div></div></div>
+  <div class="block"><h3><span class="icon">📐</span> Complexity Analysis</h3><div class="complexity-grid"><div class="complexity-card"><div class="label">Best Case</div><div class="value best">O(n)</div><div class="reason">Already sorted — one pass, 0 swaps, early termination.</div></div><div class="complexity-card"><div class="label">Average Case</div><div class="value avg">O(n²)</div><div class="reason">~n/2 passes × ~n/2 comparisons each.</div></div><div class="complexity-card"><div class="label">Worst Case</div><div class="value worst">O(n²)</div><div class="reason">Reverse-sorted: every pair swapped, n(n−1)/2 total.</div></div><div class="complexity-card"><div class="label">Space</div><div class="value space">O(1)</div><div class="reason">Only a temp for swapping. Fully in-place.</div></div></div></div>
+  <div class="block"><h3><span class="icon">🎯</span> When To Use</h3><div class="use-cases"><div class="use-case"><span class="marker">✅</span>Detecting if data is already sorted — one O(n) pass.</div><div class="use-case"><span class="marker">✅</span>Educational purposes — easy to understand.</div><div class="use-case"><span class="marker">⛔</span>Any production use — insertion sort is strictly better.</div><div class="use-case"><span class="marker">⛔</span>Large datasets — slowest O(n²) sort due to excessive swaps.</div></div><div class="insight-box"><div class="insight-label">💡 Key Insight</div><p>Almost always inferior to insertion sort. Both are O(n) best, O(n²) worst, but insertion sort does fewer comparisons and moves on average. Bubble sort's main value is pedagogical.</p></div></div>
+  <div class="block"><h3><span class="icon">▶️</span> Visual Demo</h3><div class="demo-controls"><button class="demo-btn" onclick="go('bubble')">Run</button><button class="demo-btn" onclick="reset('bubble')">Reset</button><div class="speed-control"><span>Speed:</span><input type="range" min="1" max="100" value="50" id="speed-bubble"></div></div><div class="bar-chart" id="bars-bubble"></div><div class="demo-stats"><span>n = <strong id="n-bubble">40</strong></span><span>Comparisons: <strong id="comps-bubble">0</strong></span><span>Swaps: <strong id="swaps-bubble">0</strong></span><span>Passes: <strong id="x1-bubble">0</strong></span></div><div class="concept-panel" id="concept-bubble">Press Run to watch each pass bubble the largest remaining element to the end.</div></div>
+</section>
+
+<!-- =============== MERGE =============== -->
+<section class="algo-section" id="sec-merge">
+  <div class="algo-header"><h2>Merge Sort</h2><div class="algo-tags"><span class="tag tag-comparison">Comparison</span><span class="tag tag-stable">Stable</span><span class="tag tag-not-inplace">Not In-Place</span></div></div>
+  <div class="block"><h3><span class="icon">⚙️</span> How It Works</h3><p>Divide-and-conquer. Split in half, sort recursively, merge the sorted halves in linear time.</p><div class="steps-container"><div class="step"><div class="step-num">1</div><div class="step-text">Base case: 0 or 1 elements → already sorted.</div></div><div class="step"><div class="step-num">2</div><div class="step-text">Split at the midpoint into two halves.</div></div><div class="step"><div class="step-num">3</div><div class="step-text">Recursively sort left and right halves.</div></div><div class="step"><div class="step-num">4</div><div class="step-text"><strong>Merge:</strong> Two pointers compare fronts of both halves, always taking the smaller.</div></div></div></div>
+  <div class="block"><h3><span class="icon">📐</span> Complexity Analysis</h3><div class="complexity-grid"><div class="complexity-card"><div class="label">Best Case</div><div class="value best">O(n log n)</div><div class="reason">Always splits and merges identically. Merge examines all n elements per level.</div></div><div class="complexity-card"><div class="label">Average Case</div><div class="value avg">O(n log n)</div><div class="reason">T(n) = 2T(n/2) + O(n). Master Theorem: Θ(n log n).</div></div><div class="complexity-card"><div class="label">Worst Case</div><div class="value worst">O(n log n)</div><div class="reason">Same recurrence regardless of input. log n levels × O(n) merge each.</div></div><div class="complexity-card"><div class="label">Space</div><div class="value space">O(n)</div><div class="reason">Auxiliary array for merge step. Plus O(log n) recursion stack.</div></div></div></div>
+  <div class="block"><h3><span class="icon">🎯</span> When To Use</h3><div class="use-cases"><div class="use-case"><span class="marker">✅</span>Guaranteed O(n log n) worst case needed.</div><div class="use-case"><span class="marker">✅</span>Stability required.</div><div class="use-case"><span class="marker">✅</span>Sorting linked lists — O(1) extra space on lists.</div><div class="use-case"><span class="marker">✅</span>External sorting — merging runs from disk.</div><div class="use-case"><span class="marker">⛔</span>Memory-tight scenarios — O(n) auxiliary space.</div><div class="use-case"><span class="marker">⛔</span>Cache-sensitive work — quicksort is more cache-friendly.</div></div><div class="insight-box"><div class="insight-label">💡 Key Insight</div><p>Consistency is its strength and weakness — always ~n log n work, even on sorted data. The <strong>Master Theorem</strong> analysis T(n) = 2T(n/2) + Θ(n) → Θ(n log n) is the canonical example you've seen in class. The k-way variant (your homework!) gives the same asymptotic result.</p></div></div>
+  <div class="block"><h3><span class="icon">▶️</span> Visual Demo</h3><div class="demo-controls"><button class="demo-btn" onclick="go('merge')">Run</button><button class="demo-btn" onclick="reset('merge')">Reset</button><div class="speed-control"><span>Speed:</span><input type="range" min="1" max="100" value="50" id="speed-merge"></div></div><div class="bar-chart" id="bars-merge"></div><div class="demo-stats"><span>n = <strong id="n-merge">40</strong></span><span>Comparisons: <strong id="comps-merge">0</strong></span><span>Array writes: <strong id="swaps-merge">0</strong></span><span>Max depth: <strong id="x1-merge">0</strong></span></div><div class="concept-panel" id="concept-merge">Press Run to watch merge sort recursively split the array and then merge sorted subarrays.</div><div class="aux-panel" id="merge-subarrays">Current split/merge subarrays will appear here during the run.</div></div>
+</section>
+
+<!-- =============== QUICK =============== -->
+<section class="algo-section" id="sec-quick">
+  <div class="algo-header"><h2>Quick Sort</h2><div class="algo-tags"><span class="tag tag-comparison">Comparison</span><span class="tag tag-unstable">Unstable</span><span class="tag tag-inplace">In-Place</span></div></div>
+  <div class="block"><h3><span class="icon">⚙️</span> How It Works</h3><p>Choose a pivot, partition so everything ≤ pivot is left and &gt; pivot is right, then recurse on both sides.</p><div class="steps-container"><div class="step"><div class="step-num">1</div><div class="step-text">Choose a <strong>pivot</strong> (random, last element, median-of-three).</div></div><div class="step"><div class="step-num">2</div><div class="step-text"><strong>Partition:</strong> Rearrange so ≤ pivot is left, &gt; pivot is right. Pivot lands in final position.</div></div><div class="step"><div class="step-num">3</div><div class="step-text">Recurse on left sub-array.</div></div><div class="step"><div class="step-num">4</div><div class="step-text">Recurse on right sub-array.</div></div></div></div>
+  <div class="block"><h3><span class="icon">📐</span> Complexity Analysis</h3><div class="complexity-grid"><div class="complexity-card"><div class="label">Best Case</div><div class="value best">O(n log n)</div><div class="reason">Pivot always in the middle → balanced partitions.</div></div><div class="complexity-card"><div class="label">Average Case</div><div class="value avg">O(n log n)</div><div class="reason">Random pivots give balanced splits in expectation.</div></div><div class="complexity-card"><div class="label">Worst Case</div><div class="value worst">O(n²)</div><div class="reason">Pivot always min/max → (0, n−1) partitions. T(n) = T(n−1) + O(n).</div></div><div class="complexity-card"><div class="label">Space</div><div class="value space">O(log n)</div><div class="reason">In-place partition, O(log n) avg stack depth. O(n) worst case.</div></div></div></div>
+  <div class="block"><h3><span class="icon">🎯</span> When To Use</h3><div class="use-cases"><div class="use-case"><span class="marker">✅</span>General-purpose — fastest comparison sort in practice.</div><div class="use-case"><span class="marker">✅</span>Average case matters more than worst case.</div><div class="use-case"><span class="marker">✅</span>Memory-constrained — O(log n) vs merge sort's O(n).</div><div class="use-case"><span class="marker">✅</span>Randomized pivot makes worst case astronomically unlikely.</div><div class="use-case"><span class="marker">⛔</span>O(n²) worst case is unacceptable (safety-critical).</div><div class="use-case"><span class="marker">⛔</span>Stability required.</div></div><div class="insight-box"><div class="insight-label">💡 Key Insight</div><p><strong>Partition quality = performance.</strong> All-equal elements → (0, n−1) splits → O(n²) — exactly your homework Problem 3! <strong>Randomized quicksort</strong> gives expected O(n log n) for <em>any</em> input. Three-way partition handles duplicates by grouping equals together.</p></div></div>
+  <div class="block"><h3><span class="icon">▶️</span> Visual Demo</h3><div class="demo-controls"><button class="demo-btn" onclick="go('quick')">Run</button><button class="demo-btn" onclick="reset('quick')">Reset</button><div class="speed-control"><span>Speed:</span><input type="range" min="1" max="100" value="50" id="speed-quick"></div></div><div class="bar-chart" id="bars-quick"></div><div class="demo-stats"><span>n = <strong id="n-quick">40</strong></span><span>Comparisons: <strong id="comps-quick">0</strong></span><span>Swaps: <strong id="swaps-quick">0</strong></span><span>Partitions: <strong id="x1-quick">0</strong></span><span>Max depth: <strong id="x2-quick">0</strong></span></div><div class="concept-panel" id="concept-quick">Press Run to watch quicksort choose pivots, partition the array, and recurse on subarrays.</div></div>
+</section>
+
+<!-- =============== HEAP =============== -->
+<section class="algo-section" id="sec-heap">
+  <div class="algo-header"><h2>Heap Sort</h2><div class="algo-tags"><span class="tag tag-comparison">Comparison</span><span class="tag tag-unstable">Unstable</span><span class="tag tag-inplace">In-Place</span></div></div>
+  <div class="block"><h3><span class="icon">⚙️</span> How It Works</h3><p>Build a max-heap in the array, then repeatedly extract the maximum to build the sorted order from right to left.</p><div class="steps-container"><div class="step"><div class="step-num">1</div><div class="step-text"><strong>Build Max-Heap:</strong> Sift-down from the last non-leaf. O(n) time.</div></div><div class="step"><div class="step-num">2</div><div class="step-text">Root is the max. Swap it with the last heap element.</div></div><div class="step"><div class="step-num">3</div><div class="step-text">Shrink heap by 1. Sift-down the new root.</div></div><div class="step"><div class="step-num">4</div><div class="step-text">Repeat until heap size is 1.</div></div></div></div>
+  <div class="block"><h3><span class="icon">📐</span> Complexity Analysis</h3><div class="complexity-grid"><div class="complexity-card"><div class="label">Best Case</div><div class="value best">O(n log n)</div><div class="reason">Each extraction sifts O(log n). Build O(n) + n extractions dominates.</div></div><div class="complexity-card"><div class="label">Average Case</div><div class="value avg">O(n log n)</div><div class="reason">n extract-max operations × O(log n) each.</div></div><div class="complexity-card"><div class="label">Worst Case</div><div class="value worst">O(n log n)</div><div class="reason">Guaranteed — no degenerate inputs possible.</div></div><div class="complexity-card"><div class="label">Space</div><div class="value space">O(1)</div><div class="reason">Heap built within the array. Only constant extra.</div></div></div></div>
+  <div class="block"><h3><span class="icon">🎯</span> When To Use</h3><div class="use-cases"><div class="use-case"><span class="marker">✅</span>Need guaranteed O(n log n) AND O(1) space — unique combo.</div><div class="use-case"><span class="marker">✅</span>Introsort fallback when quicksort recurses too deep.</div><div class="use-case"><span class="marker">✅</span>Finding k largest/smallest — partial sort in O(n + k log n).</div><div class="use-case"><span class="marker">⛔</span>General sorting — quicksort is faster in practice (cache).</div><div class="use-case"><span class="marker">⛔</span>Stability needed.</div><div class="use-case"><span class="marker">⛔</span>Nearly sorted data — not adaptive.</div></div><div class="insight-box"><div class="insight-label">💡 Key Insight</div><p>Only comparison sort with <strong>O(n log n) worst case + O(1) space</strong>. But 2–3× slower than quicksort in practice due to <strong>cache misses</strong> from parent↔child jumps. Introsort uses quicksort primarily and only falls back to heapsort after O(log n) depth.</p></div></div>
+  <div class="block"><h3><span class="icon">▶️</span> Visual Demo</h3><div class="demo-controls"><button class="demo-btn" onclick="go('heap')">Run</button><button class="demo-btn" onclick="reset('heap')">Reset</button><div class="speed-control"><span>Speed:</span><input type="range" min="1" max="100" value="50" id="speed-heap"></div></div><div class="bar-chart" id="bars-heap"></div><div class="demo-stats"><span>n = <strong id="n-heap">40</strong></span><span>Comparisons: <strong id="comps-heap">0</strong></span><span>Swaps: <strong id="swaps-heap">0</strong></span><span>Extractions: <strong id="x1-heap">0</strong></span></div><div class="concept-panel" id="concept-heap">Press Run to watch heap sort build a max-heap and repeatedly extract the maximum.</div></div>
+</section>
+
+<!-- =============== COUNTING =============== -->
+<section class="algo-section" id="sec-counting">
+  <div class="algo-header"><h2>Counting Sort</h2><div class="algo-tags"><span class="tag tag-noncomparison">Non-Comparison</span><span class="tag tag-stable">Stable</span><span class="tag tag-not-inplace">Not In-Place</span></div></div>
+  <div class="block"><h3><span class="icon">⚙️</span> How It Works</h3><p>Count occurrences of each value, compute prefix sums, then place elements directly into their sorted positions.</p><div class="steps-container"><div class="step"><div class="step-num">1</div><div class="step-text">Find range <code>k = max − min + 1</code>. Create count array of size k.</div></div><div class="step"><div class="step-num">2</div><div class="step-text">Count: for each element, increment <code>count[element − min]</code>.</div></div><div class="step"><div class="step-num">3</div><div class="step-text">Prefix sums: <code>count[i] += count[i−1]</code>.</div></div><div class="step"><div class="step-num">4</div><div class="step-text">Place: scan right-to-left (for stability), place each at <code>count[val]−1</code>, decrement.</div></div></div></div>
+  <div class="block"><h3><span class="icon">📐</span> Complexity Analysis</h3><div class="complexity-grid"><div class="complexity-card"><div class="label">Best Case</div><div class="value best">O(n + k)</div><div class="reason">Always: count O(n), prefix O(k), place O(n). Not input-order dependent.</div></div><div class="complexity-card"><div class="label">Average Case</div><div class="value avg">O(n + k)</div><div class="reason">Same — depends only on n and k.</div></div><div class="complexity-card"><div class="label">Worst Case</div><div class="value worst">O(n + k)</div><div class="reason">If k ≤ O(n), linear. If k ≫ n, count array dominates.</div></div><div class="complexity-card"><div class="label">Space</div><div class="value space">O(n + k)</div><div class="reason">Count array (k) + output array (n).</div></div></div></div>
+  <div class="block"><h3><span class="icon">🎯</span> When To Use</h3><div class="use-cases"><div class="use-case"><span class="marker">✅</span>Integers with small known range (ages, grades, ASCII).</div><div class="use-case"><span class="marker">✅</span>As the stable sub-routine in radix sort.</div><div class="use-case"><span class="marker">✅</span>Need stable linear-time sort and k = O(n).</div><div class="use-case"><span class="marker">⛔</span>Floats or strings — values must be discrete integers.</div><div class="use-case"><span class="marker">⛔</span>Huge range (32-bit ints: k = 4 billion).</div><div class="use-case"><span class="marker">⛔</span>Space limited — O(n+k) auxiliary memory.</div></div><div class="insight-box"><div class="insight-label">💡 Key Insight</div><p>Breaks the <strong>Ω(n log n) comparison lower bound</strong> by not comparing at all — uses integer structure instead. Only works for discrete keys with bounded range, and space scales with k.</p></div></div>
+  <div class="block"><h3><span class="icon">▶️</span> Visual Demo</h3><div class="demo-controls"><button class="demo-btn" onclick="go('counting')">Run</button><button class="demo-btn" onclick="reset('counting')">Reset</button><div class="speed-control"><span>Speed:</span><input type="range" min="1" max="100" value="50" id="speed-counting"></div></div><div class="bar-chart" id="bars-counting"></div><div class="demo-stats"><span>n = <strong id="n-counting">40</strong></span><span>Range (k): <strong id="x1-counting">–</strong></span><span>Array reads: <strong id="comps-counting">0</strong></span><span>Array writes: <strong id="swaps-counting">0</strong></span></div><div class="concept-panel" id="concept-counting">Press Run to watch counting sort build a count array, compute prefix sums, and place elements into their final positions.</div><div class="aux-panel count-array" id="count-array">The count array over the value range will appear here during the run.</div></div>
+</section>
+
+<!-- =============== RADIX =============== -->
+<section class="algo-section" id="sec-radix">
+  <div class="algo-header"><h2>Radix Sort</h2><div class="algo-tags"><span class="tag tag-noncomparison">Non-Comparison</span><span class="tag tag-stable">Stable</span><span class="tag tag-not-inplace">Not In-Place</span></div></div>
+  <div class="block"><h3><span class="icon">⚙️</span> How It Works</h3><p>Sort integers digit-by-digit from least significant to most significant, using a stable sub-sort for each digit.</p><div class="steps-container"><div class="step"><div class="step-num">1</div><div class="step-text">Find <code>d</code> = number of digits in the largest number.</div></div><div class="step"><div class="step-num">2</div><div class="step-text">For each digit position (LSD to MSD):</div></div><div class="step"><div class="step-num">3</div><div class="step-text">Run <strong>stable counting sort</strong> on the current digit (base 10: k=10).</div></div><div class="step"><div class="step-num">4</div><div class="step-text">After d passes, the array is sorted.</div></div></div></div>
+  <div class="block"><h3><span class="icon">📐</span> Complexity Analysis</h3><div class="complexity-grid"><div class="complexity-card"><div class="label">Best Case</div><div class="value best">O(d·(n+k))</div><div class="reason">d digit passes, each O(n+k). Not input-order dependent.</div></div><div class="complexity-card"><div class="label">Average Case</div><div class="value avg">O(d·(n+k))</div><div class="reason">Same. For base-10: k=10, so each pass is O(n).</div></div><div class="complexity-card"><div class="label">Worst Case</div><div class="value worst">O(d·(n+k))</div><div class="reason">For w-bit integers with radix r: d = w/log₂(r), k = r.</div></div><div class="complexity-card"><div class="label">Space</div><div class="value space">O(n + k)</div><div class="reason">Counting sort needs O(n+k). Reused across passes.</div></div></div></div>
+  <div class="block"><h3><span class="icon">🎯</span> When To Use</h3><div class="use-cases"><div class="use-case"><span class="marker">✅</span>Fixed-width integers (32-bit, 64-bit).</div><div class="use-case"><span class="marker">✅</span>d is small — 4 passes for 32-bit base-256 → effectively O(n).</div><div class="use-case"><span class="marker">✅</span>Fixed-length strings (MSD variant).</div><div class="use-case"><span class="marker">⛔</span>Floats without special bit handling.</div><div class="use-case"><span class="marker">⛔</span>d·k large relative to n log n.</div></div><div class="insight-box"><div class="insight-label">💡 Key Insight</div><p>Sub-sort <em>must</em> be stable — if the ones-digit sort disrupts tens-digit ordering, it breaks. For 32-bit base-256: d=4, k=256, total O(4(n+256)) — <strong>linear in n</strong>, beating all comparison sorts for fixed-width integers.</p></div></div>
+  <div class="block"><h3><span class="icon">▶️</span> Visual Demo</h3><div class="demo-controls"><button class="demo-btn" onclick="go('radix')">Run</button><button class="demo-btn" onclick="reset('radix')">Reset</button><div class="speed-control"><span>Speed:</span><input type="range" min="1" max="100" value="50" id="speed-radix"></div></div><div class="bar-chart" id="bars-radix"></div><div class="demo-stats"><span>n = <strong id="n-radix">40</strong></span><span>Digits (d): <strong id="x1-radix">–</strong></span><span>Current pass: <strong id="x2-radix">–</strong></span><span>Array writes: <strong id="swaps-radix">0</strong></span></div><div class="concept-panel" id="concept-radix">Press Run to watch radix sort distribute elements into digit buckets for each pass.</div><div class="aux-panel bucket-board" id="digit-buckets">Digit buckets for the current pass will appear here during the run.</div></div>
+</section>
+
+<!-- =============== BUCKET =============== -->
+<section class="algo-section" id="sec-bucket">
+  <div class="algo-header"><h2>Bucket Sort</h2><div class="algo-tags"><span class="tag tag-noncomparison">Non-Comparison (distribution)</span><span class="tag tag-stable">Stable*</span><span class="tag tag-not-inplace">Not In-Place</span></div></div>
+  <div class="block"><h3><span class="icon">⚙️</span> How It Works</h3><p>Distribute elements into "buckets" by value range, sort each bucket (typically with insertion sort), then concatenate.</p><div class="steps-container"><div class="step"><div class="step-num">1</div><div class="step-text">Create <code>k</code> empty buckets. Map each element to a bucket: <code>bucket = floor(k × value / max)</code>.</div></div><div class="step"><div class="step-num">2</div><div class="step-text"><strong>Scatter:</strong> Place each element into its assigned bucket.</div></div><div class="step"><div class="step-num">3</div><div class="step-text">Sort each bucket individually (insertion sort works well for small buckets).</div></div><div class="step"><div class="step-num">4</div><div class="step-text"><strong>Gather:</strong> Concatenate all buckets in order.</div></div></div></div>
+  <div class="block"><h3><span class="icon">📐</span> Complexity Analysis</h3><div class="complexity-grid"><div class="complexity-card"><div class="label">Best Case</div><div class="value best">O(n + k)</div><div class="reason">Perfectly distributed — each bucket has ~1 element, no sorting needed.</div></div><div class="complexity-card"><div class="label">Average Case</div><div class="value avg">O(n + k)</div><div class="reason">Uniform distribution with k=Θ(n): each bucket O(1) elements. Insertion sort on O(1) is O(1).</div></div><div class="complexity-card"><div class="label">Worst Case</div><div class="value worst">O(n²)</div><div class="reason">All elements in one bucket → degenerates to insertion sort's O(n²).</div></div><div class="complexity-card"><div class="label">Space</div><div class="value space">O(n + k)</div><div class="reason">k buckets + n elements distributed across them + output.</div></div></div></div>
+  <div class="block"><h3><span class="icon">🎯</span> When To Use</h3><div class="use-cases"><div class="use-case"><span class="marker">✅</span>Uniformly distributed data over a known range.</div><div class="use-case"><span class="marker">✅</span>Floats in [0, 1) — the classic textbook scenario.</div><div class="use-case"><span class="marker">✅</span>k = Θ(n) buckets → expected O(n).</div><div class="use-case"><span class="marker">✅</span>External memory sorting — distributing into buckets maps to disk.</div><div class="use-case"><span class="marker">⛔</span>Skewed/clustered data — most elements in one bucket → O(n²).</div><div class="use-case"><span class="marker">⛔</span>Unknown distribution.</div><div class="use-case"><span class="marker">⛔</span>Space-limited — O(n+k) auxiliary.</div></div><div class="insight-box"><div class="insight-label">💡 Key Insight</div><p>Performance depends on <strong>distribution uniformity</strong>. With k=n buckets and uniform data, expected bucket size is O(1), giving O(n) total. The worst case (all in one bucket) degenerates to insertion sort's O(n²). *Stability depends on using a stable sub-sort — insertion sort is stable, so bucket sort with insertion sort preserves stability.</p></div></div>
+  <div class="block"><h3><span class="icon">▶️</span> Visual Demo</h3><div class="demo-controls"><button class="demo-btn" onclick="go('bucket')">Run</button><button class="demo-btn" onclick="reset('bucket')">Reset</button><div class="speed-control"><span>Speed:</span><input type="range" min="1" max="100" value="50" id="speed-bucket"></div></div><div class="bar-chart" id="bars-bucket"></div><div class="demo-stats"><span>n = <strong id="n-bucket">40</strong></span><span>Buckets (k): <strong id="x1-bucket">–</strong></span><span>Max bucket size: <strong id="x2-bucket">–</strong></span><span>Array writes: <strong id="swaps-bucket">0</strong></span></div><div class="concept-panel" id="concept-bucket">Press Run to watch bucket sort scatter elements into buckets, sort within each bucket, and then gather them back.</div><div class="aux-panel bucket-board" id="bucket-board">Buckets and their elements will appear here during the run.</div></div>
+</section>
+
+<!-- =============== COMPARE =============== -->
+<section class="algo-section" id="sec-compare">
+  <div class="algo-header"><h2>Compare All Algorithms</h2></div>
+  <div class="block"><h3><span class="icon">📊</span> Complete Complexity Reference</h3><div class="comparison-table-wrapper"><table class="comparison-table"><thead><tr><th>Algorithm</th><th>Best</th><th>Avg</th><th>Worst</th><th>Space</th><th>Stable</th><th>In-Place</th><th>Adaptive</th><th>Method</th></tr></thead><tbody>
+    <tr><td class="algo-name">Insertion</td><td class="best-cell">O(n)</td><td class="avg-cell">O(n²)</td><td class="worst-cell">O(n²)</td><td class="space-cell">O(1)</td><td>✅</td><td>✅</td><td>✅</td><td>Comparison</td></tr>
+    <tr><td class="algo-name">Selection</td><td class="best-cell">O(n²)</td><td class="avg-cell">O(n²)</td><td class="worst-cell">O(n²)</td><td class="space-cell">O(1)</td><td>❌</td><td>✅</td><td>❌</td><td>Comparison</td></tr>
+    <tr><td class="algo-name">Bubble</td><td class="best-cell">O(n)</td><td class="avg-cell">O(n²)</td><td class="worst-cell">O(n²)</td><td class="space-cell">O(1)</td><td>✅</td><td>✅</td><td>✅</td><td>Comparison</td></tr>
+    <tr><td class="algo-name">Merge</td><td class="best-cell">O(n log n)</td><td class="avg-cell">O(n log n)</td><td class="worst-cell">O(n log n)</td><td class="space-cell">O(n)</td><td>✅</td><td>❌</td><td>❌</td><td>Comparison</td></tr>
+    <tr><td class="algo-name">Quick</td><td class="best-cell">O(n log n)</td><td class="avg-cell">O(n log n)</td><td class="worst-cell">O(n²)</td><td class="space-cell">O(log n)</td><td>❌</td><td>✅</td><td>❌</td><td>Comparison</td></tr>
+    <tr><td class="algo-name">Heap</td><td class="best-cell">O(n log n)</td><td class="avg-cell">O(n log n)</td><td class="worst-cell">O(n log n)</td><td class="space-cell">O(1)</td><td>❌</td><td>✅</td><td>❌</td><td>Comparison</td></tr>
+    <tr><td class="algo-name">Counting</td><td class="best-cell">O(n+k)</td><td class="avg-cell">O(n+k)</td><td class="worst-cell">O(n+k)</td><td class="space-cell">O(n+k)</td><td>✅</td><td>❌</td><td>❌</td><td>Integer keys</td></tr>
+    <tr><td class="algo-name">Radix</td><td class="best-cell">O(d(n+k))</td><td class="avg-cell">O(d(n+k))</td><td class="worst-cell">O(d(n+k))</td><td class="space-cell">O(n+k)</td><td>✅</td><td>❌</td><td>❌</td><td>Digit-by-digit</td></tr>
+    <tr><td class="algo-name">Bucket</td><td class="best-cell">O(n+k)</td><td class="avg-cell">O(n+k)</td><td class="worst-cell">O(n²)</td><td class="space-cell">O(n+k)</td><td>✅*</td><td>❌</td><td>❌</td><td>Distribution</td></tr>
+  </tbody></table></div></div>
+  <div class="block"><h3><span class="icon">🧠</span> Decision Guide: Which Sort?</h3><div class="steps-container">
+    <div class="step"><div class="step-num">1</div><div class="step-text"><strong>Small array (n ≤ ~50)?</strong> → <strong>Insertion sort</strong>.</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-text"><strong>Nearly sorted?</strong> → <strong>Insertion sort</strong>. O(n + inversions).</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-text"><strong>Guaranteed O(n log n) + stable?</strong> → <strong>Merge sort</strong>.</div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-text"><strong>Guaranteed O(n log n) + O(1) space?</strong> → <strong>Heap sort</strong>.</div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-text"><strong>Fastest in practice?</strong> → <strong>Quicksort</strong> (randomized).</div></div>
+    <div class="step"><div class="step-num">6</div><div class="step-text"><strong>Integer keys, small range?</strong> → <strong>Counting sort</strong>. Many digits? → <strong>Radix sort</strong>.</div></div>
+    <div class="step"><div class="step-num">7</div><div class="step-text"><strong>Uniform distribution?</strong> → <strong>Bucket sort</strong>. Expected O(n).</div></div>
+    <div class="step"><div class="step-num">8</div><div class="step-text"><strong>Linked lists?</strong> → <strong>Merge sort</strong>. <strong>External (disk)?</strong> → <strong>External merge sort</strong>.</div></div>
+  </div></div>
+  <div class="block"><h3><span class="icon">⚡</span> The Comparison-Based Lower Bound</h3>
+    <p>Any comparison-based sort needs <strong>Ω(n log n)</strong> comparisons worst case. Proof: n! possible orderings → decision tree height ≥ log₂(n!) ≥ n log n. Merge sort, heap sort, and (expected) quicksort are <strong>asymptotically optimal</strong> among comparison sorts.</p>
+    <p style="margin-top:8px;">Counting sort, radix sort, and bucket sort bypass this by using <strong>key structure</strong> (integer values, distribution, digits) rather than comparisons alone.</p>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer" style="border-top:1px solid var(--border);padding:18px 24px 32px;margin-top:32px;background:rgba(255,255,255,0.9);font-size:13px;color:var(--text-muted);">
+  <div style="max-width:1000px;margin:0 auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;">
+    <div>
+      <span>Created by <strong>Ricky Pan</strong></span>
+      <span style="margin-left:10px;"><a href="https://github.com/ruiqipan" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;">GitHub</a></span>
+      <span style="margin-left:8px;"><a href="https://www.linkedin.com/in/ruiqipan/" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;">LinkedIn</a></span>
+    </div>
+    <div style="opacity:0.9;">
+      <span>This site was built with <strong>Claude</strong> and <strong>Cursor</strong>.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+// NAV
+const navBtns=document.querySelectorAll('.nav-btn'), sections=document.querySelectorAll('.algo-section');
+function show(t){sections.forEach(s=>s.classList.remove('visible'));navBtns.forEach(b=>b.classList.remove('active'));const s=document.getElementById('sec-'+t);if(s)s.classList.add('visible');navBtns.forEach(b=>{if(b.dataset.target===t)b.classList.add('active')});window.scrollTo({top:0,behavior:'smooth'})}
+navBtns.forEach(b=>b.addEventListener('click',()=>show(b.dataset.target)));
+document.querySelectorAll('.overview-card').forEach(c=>c.addEventListener('click',()=>show(c.dataset.algo)));
+
+// DEMO
+const D={},N=40;
+function gen(n){const a=[];for(let i=0;i<n;i++)a.push(Math.floor(Math.random()*180)+20);return a}
+function inv(a){let c=0;for(let i=0;i<a.length;i++)for(let j=i+1;j<a.length;j++)if(a[i]>a[j])c++;return c}
+function $(id){return document.getElementById(id)}
+function setT(id,v){const e=$(id);if(e)e.textContent=v}
+
+const conceptDefaults={
+  insertion:'Press Run to watch insertion sort build the sorted prefix one key at a time.',
+  selection:'Press Run to watch selection sort grow the sorted prefix by repeatedly selecting the minimum.',
+  bubble:'Press Run to watch each pass bubble the largest remaining element to the end.',
+  merge:'Press Run to watch merge sort recursively split the array and then merge sorted subarrays.',
+  quick:'Press Run to watch quicksort choose pivots, partition the array, and recurse on subarrays.',
+  heap:'Press Run to watch heap sort build a max-heap and repeatedly extract the maximum.',
+  counting:'Press Run to watch counting sort build a count array, compute prefix sums, and place elements into their final positions.',
+  radix:'Press Run to watch radix sort distribute elements into digit buckets for each pass.',
+  bucket:'Press Run to watch bucket sort scatter elements into buckets, sort within each bucket, and then gather them back.'
+};
+
+function setConcept(algo,text){const el=$('concept-'+algo);if(el)el.textContent=text}
+
+function clearAuxPanels(nm){
+  if(nm==='merge'){const e=$('merge-subarrays');if(e)e.textContent='Current split/merge subarrays will appear here during the run.'}
+  if(nm==='bucket'){const e=$('bucket-board');if(e)e.textContent='Buckets and their elements will appear here during the run.'}
+  if(nm==='counting'){const e=$('count-array');if(e)e.textContent='The count array over the value range will appear here during the run.'}
+  if(nm==='radix'){const e=$('digit-buckets');if(e)e.textContent='Digit buckets for the current pass will appear here during the run.'}
+}
+
+function renderMergePanel(label,left,right){
+  const e=$('merge-subarrays');if(!e)return;
+  e.textContent=label+' Left: ['+left.join(', ')+'] | Right: ['+right.join(', ')+']';
+}
+
+function renderBucketBoard(labelPrefix,buckets){
+  const board=$('bucket-board')||$('digit-buckets');if(!board)return;
+  board.innerHTML='';
+  const k=buckets.length;
+  for(let i=0;i<k;i++){
+    const col=document.createElement('div');col.className='bucket-col';
+    const title=document.createElement('div');title.className='bucket-col-title';
+    title.textContent=(labelPrefix?labelPrefix+' ':'')+i;
+    const items=document.createElement('div');items.className='bucket-items';
+    buckets[i].forEach(v=>{const chip=document.createElement('div');chip.className='bucket-chip';chip.textContent=String(v);items.appendChild(chip)});
+    col.appendChild(title);col.appendChild(items);board.appendChild(col);
+  }
+}
+
+function renderCountArray(mn,mx,count){
+  const wrap=$('count-array');if(!wrap)return;wrap.innerHTML='';
+  for(let v=mn;v<=mx;v++){
+    const idx=v-mn,cell=document.createElement('div');cell.className='count-cell';
+    const kEl=document.createElement('span');kEl.className='count-cell-key';kEl.textContent=String(v);
+    const vEl=document.createElement('span');vEl.className='count-cell-val';vEl.textContent=String(count[idx]||0);
+    cell.appendChild(kEl);cell.appendChild(vEl);wrap.appendChild(cell);
+  }
+}
+
+function initD(nm){
+  D[nm]={arr:gen(N),running:false,cancel:false};
+  render(nm);setT('n-'+nm,N);
+  if(nm==='insertion')setT('x1-insertion',inv(D[nm].arr));
+  if(nm==='counting'){const a=D[nm].arr;setT('x1-counting',Math.max(...a)-Math.min(...a)+1)}
+  if(nm==='radix'){setT('x1-radix',Math.max(...D[nm].arr).toString().length);setT('x2-radix','–')}
+  if(nm==='bucket'){setT('x1-bucket',Math.ceil(Math.sqrt(N)));setT('x2-bucket','–')}
+  if(conceptDefaults[nm])setConcept(nm,conceptDefaults[nm]);
+  clearAuxPanels(nm);
+}
+
+function render(nm,hl={}){
+  const c=$('bars-'+nm);if(!c)return;
+  const arr=D[nm].arr,mx=Math.max(...arr);c.innerHTML='';
+  arr.forEach((v,i)=>{
+    const b=document.createElement('div');b.className='bar';
+    b.style.height=(v/mx*100)+'%';
+    if(hl.sorted&&hl.sorted.has(i))b.classList.add('sorted');
+    else if(hl.pivot===i)b.classList.add('pivot');
+    else if(hl.sw&&hl.sw.has(i))b.classList.add('swapping');
+    else if(hl.cmp&&hl.cmp.has(i))b.classList.add('comparing');
+    else if(hl.bc&&hl.bc[i])b.classList.add(hl.bc[i]);
+    c.appendChild(b);
+  });
+}
+
+function delay(nm){const s=$('speed-'+nm);return Math.max(3,180-(s?parseInt(s.value):50)*1.8)}
+function slp(ms){return new Promise(r=>setTimeout(r,ms))}
+
+function reset(nm){
+  if(D[nm])D[nm].cancel=true;
+  D[nm]={arr:gen(N),running:false,cancel:false};
+  ['comps-','swaps-','x1-','x2-'].forEach(p=>{const e=$(p+nm);if(e)e.textContent='0'});
+  setT('n-'+nm,N);
+  if(nm==='insertion'){setT('x1-insertion',inv(D[nm].arr));setT('swaps-insertion','0')}
+  if(nm==='bubble')setT('x1-bubble','0');
+  if(nm==='counting'){const a=D[nm].arr;setT('x1-counting',Math.max(...a)-Math.min(...a)+1)}
+  if(nm==='radix'){setT('x1-radix',Math.max(...D[nm].arr).toString().length);setT('x2-radix','–')}
+  if(nm==='bucket'){setT('x1-bucket',Math.ceil(Math.sqrt(N)));setT('x2-bucket','–')}
+  render(nm);
+  if(conceptDefaults[nm])setConcept(nm,conceptDefaults[nm]);
+  clearAuxPanels(nm);
+}
+
+async function go(nm){
+  if(D[nm]&&D[nm].running){D[nm].cancel=true;return}
+  reset(nm);const S=D[nm];S.running=true;S.cancel=false;
+  const arr=S.arr,n=arr.length,X=()=>S.cancel;
+  let comps=0,swaps=0;
+
+  if(nm==='insertion'){
+    for(let i=1;i<n&&!X();i++){
+      setConcept('insertion','Inserting key at index '+i+' into sorted prefix [0..'+(i-1)+'].');
+      let key=arr[i],j=i-1;
+      render(nm,{cmp:new Set([i])});await slp(delay(nm));
+      while(j>=0&&!X()){
+        setConcept('insertion','Comparing key ('+key+') with A['+j+']; shifting right if larger.');
+        comps++;render(nm,{cmp:new Set([j,j+1])});setT('comps-insertion',comps);await slp(delay(nm));
+        if(arr[j]>key){arr[j+1]=arr[j];swaps++;j--;setT('swaps-insertion',swaps);render(nm,{sw:new Set([j+1,j+2])});await slp(delay(nm))}
+        else break;
+      }
+      arr[j+1]=key;
+      setConcept('insertion','Key placed at position '+(j+1)+'. Sorted prefix is now [0..'+i+'].');
+    }
+  }
+  else if(nm==='selection'){
+    for(let i=0;i<n-1&&!X();i++){
+      setConcept('selection','Selecting the minimum from unsorted region ['+i+'..'+(n-1)+'].');
+      let mi=i;const sd=new Set(Array.from({length:i},(_,k)=>k));
+      for(let j=i+1;j<n&&!X();j++){comps++;render(nm,{cmp:new Set([mi,j]),sorted:sd});setT('comps-selection',comps);await slp(delay(nm));if(arr[j]<arr[mi]){mi=j;setConcept('selection','New minimum candidate at index '+mi+'.')}}
+      if(mi!==i&&!X()){[arr[i],arr[mi]]=[arr[mi],arr[i]];swaps++;setT('swaps-selection',swaps);render(nm,{sw:new Set([i,mi]),sorted:sd});await slp(delay(nm));setConcept('selection','Placed minimum at index '+i+'; sorted prefix is now [0..'+i+'].');}
+    }
+  }
+  else if(nm==='bubble'){
+    let passes=0;
+    for(let i=0;i<n-1&&!X();i++){
+      setConcept('bubble','Pass #'+(i+1)+': bubbling the largest remaining element toward position '+(n-1-i)+'.');
+      let sw2=false;const sd=new Set(Array.from({length:i},(_,k)=>n-1-k));
+      for(let j=0;j<n-i-1&&!X();j++){
+        setConcept('bubble','Comparing neighbors A['+j+'] and A['+(j+1)+']; swapping if out of order.');
+        comps++;render(nm,{cmp:new Set([j,j+1]),sorted:sd});setT('comps-bubble',comps);await slp(delay(nm));
+        if(arr[j]>arr[j+1]){[arr[j],arr[j+1]]=[arr[j+1],arr[j]];swaps++;sw2=true;setT('swaps-bubble',swaps);render(nm,{sw:new Set([j,j+1]),sorted:sd});await slp(delay(nm))}
+      }
+      passes++;setT('x1-bubble',passes);if(!sw2)break;
+    }
+    if(!X())setConcept('bubble','No swaps in last pass → array is sorted; early stop.');
+  }
+  else if(nm==='merge'){
+    let maxD=0;
+    async function ms(l,r,d){
+      if(d>maxD){maxD=d;setT('x1-merge',maxD)}
+      if(l>=r||X())return;
+      const m=(l+r)>>1;
+      if(r-l>=3){setConcept('merge','Splitting range ['+l+'..'+r+'] into ['+l+'..'+m+'] and ['+(m+1)+'..'+r+'] at depth '+d+'.');renderMergePanel('Split:',arr.slice(l,m+1),arr.slice(m+1,r+1));await slp(Math.max(8,delay(nm)*0.5));}
+      await ms(l,m,d+1);await ms(m+1,r,d+1);
+      const L=arr.slice(l,m+1),R=arr.slice(m+1,r+1);let i=0,j=0,k=l;
+      setConcept('merge','Merging two sorted halves: ['+l+'..'+m+'] and ['+(m+1)+'..'+r+'] at depth '+d+'.');
+      renderMergePanel('Merge:',L,R);
+      while(i<L.length&&j<R.length&&!X()){comps++;setT('comps-merge',comps);render(nm,{cmp:new Set([l+i,m+1+j])});await slp(delay(nm));if(L[i]<=R[j]){arr[k]=L[i];i++}else{arr[k]=R[j];j++}swaps++;k++;setT('swaps-merge',swaps);render(nm,{sw:new Set([k-1])});await slp(delay(nm))}
+      while(i<L.length&&!X()){arr[k]=L[i];i++;k++;swaps++;setT('swaps-merge',swaps);render(nm,{sw:new Set([k-1])});await slp(delay(nm))}
+      while(j<R.length&&!X()){arr[k]=R[j];j++;k++;swaps++;setT('swaps-merge',swaps);render(nm,{sw:new Set([k-1])});await slp(delay(nm))}
+      if(!X())setConcept('merge','Finished merging range ['+l+'..'+r+'] into a single sorted run.');
+    }
+    await ms(0,n-1,0);
+  }
+  else if(nm==='quick'){
+    let parts=0,maxD2=0;
+    async function qs(lo,hi,d){
+      if(d>maxD2){maxD2=d;setT('x2-quick',maxD2)}
+      if(lo>=hi||X())return;
+      const ri=lo+Math.floor(Math.random()*(hi-lo+1));[arr[ri],arr[hi]]=[arr[hi],arr[ri]];
+      const pv=arr[hi];let i2=lo-1;
+      setConcept('quick','Choosing pivot at index '+hi+' (value '+pv+'), partitioning ['+lo+'..'+hi+'].');
+      for(let j=lo;j<hi&&!X();j++){comps++;setT('comps-quick',comps);render(nm,{cmp:new Set([j]),pivot:hi});await slp(delay(nm));if(arr[j]<=pv){i2++;[arr[i2],arr[j]]=[arr[j],arr[i2]];swaps++;setT('swaps-quick',swaps);render(nm,{sw:new Set([i2,j]),pivot:hi});await slp(delay(nm))}}
+      [arr[i2+1],arr[hi]]=[arr[hi],arr[i2+1]];swaps++;setT('swaps-quick',swaps);parts++;setT('x1-quick',parts);
+      render(nm,{sw:new Set([i2+1,hi])});await slp(delay(nm));
+      setConcept('quick','Pivot fixed at index '+(i2+1)+'; recurse on ['+lo+'..'+i2+'] and ['+(i2+2)+'..'+hi+'].');
+      await qs(lo,i2,d+1);await qs(i2+2,hi,d+1);
+    }
+    await qs(0,n-1,0);
+  }
+  else if(nm==='heap'){
+    let extr=0;
+    async function sd(sz,i){
+      let lg=i,l=2*i+1,r=2*i+2;
+      if(l<sz){comps++;setT('comps-heap',comps);if(arr[l]>arr[lg])lg=l}
+      if(r<sz){comps++;setT('comps-heap',comps);if(arr[r]>arr[lg])lg=r}
+      if(lg!==i&&!X()){const s2=new Set(Array.from({length:n-sz},(_,k)=>n-1-k));[arr[i],arr[lg]]=[arr[lg],arr[i]];swaps++;setT('swaps-heap',swaps);render(nm,{sw:new Set([i,lg]),sorted:s2});await slp(delay(nm));await sd(sz,lg)}
+    }
+    for(let i=(n>>1)-1;i>=0&&!X();i--){setConcept('heap','Building max-heap: sift-down at index '+i+' within heap size '+n+'.');await sd(n,i);}
+    for(let i=n-1;i>0&&!X();i--){setConcept('heap','Extracting current maximum at root into position '+i+'; heap shrinks to size '+i+'.');[arr[0],arr[i]]=[arr[i],arr[0]];swaps++;extr++;setT('swaps-heap',swaps);setT('x1-heap',extr);const s2=new Set(Array.from({length:n-i},(_,k)=>n-1-k));render(nm,{sw:new Set([0,i]),sorted:s2});await slp(delay(nm));await sd(i,0)}
+  }
+  else if(nm==='counting'){
+    const mn=Math.min(...arr),mx=Math.max(...arr),k=mx-mn+1;setT('x1-counting',k);
+    const count=new Array(k).fill(0);let reads=0,writes=0;
+    setConcept('counting','Counting step: scanning input and incrementing count[value].');
+    renderCountArray(mn,mx,count);
+    for(let i=0;i<n&&!X();i++){count[arr[i]-mn]++;reads++;setT('comps-counting',reads);render(nm,{cmp:new Set([i])});renderCountArray(mn,mx,count);await slp(delay(nm))}
+    setConcept('counting','Prefix sum step: converting counts into positions (prefix sums).');
+    const step=Math.max(1,Math.ceil(k/40));
+    for(let i=1;i<k&&!X();i++){count[i]+=count[i-1];if(i%step===0||i===k-1){renderCountArray(mn,mx,count);await slp(delay(nm));}}
+    const out=new Array(n);
+    setConcept('counting','Placement step: placing each element into its final index using the prefix sums.');
+    for(let i=n-1;i>=0&&!X();i--){const v=arr[i],pos=count[v-mn]-1;out[pos]=v;count[v-mn]--;writes++;setT('swaps-counting',writes)}
+    for(let i=0;i<n&&!X();i++){arr[i]=out[i];writes++;setT('swaps-counting',writes);render(nm,{sorted:new Set(Array.from({length:i+1},(_,k)=>k))});await slp(delay(nm))}
+  }
+  else if(nm==='radix'){
+    const mx=Math.max(...arr),d=mx.toString().length;setT('x1-radix',d);let writes=0;
+    for(let dig=0;dig<d&&!X();dig++){
+      setT('x2-radix',(dig+1)+'/'+d);
+      const exp=Math.pow(10,dig);
+      const buckets=Array.from({length:10},()=>[]);
+      setConcept('radix','Pass '+(dig+1)+'/'+d+': scattering by digit at place 10^'+dig+' (LSD first).');
+      for(let i=0;i<n&&!X();i++){
+        const digit=Math.floor(arr[i]/exp)%10;
+        buckets[digit].push(arr[i]);
+        renderBucketBoard('Digit',buckets);
+        render(nm,{cmp:new Set([i])});
+        await slp(Math.max(6,delay(nm)*0.6));
+      }
+      setConcept('radix','Gather: concatenating digit buckets back into the array (stable).');
+      let idx=0;
+      for(let b=0;b<10&&!X();b++){
+        for(let j=0;j<buckets[b].length&&!X();j++){
+          arr[idx]=buckets[b][j];
+          writes++;setT('swaps-radix',writes);
+          render(nm,{sw:new Set([idx])});
+          idx++;
+          await slp(delay(nm));
+        }
+      }
+      await slp(delay(nm)*2);
+    }
+  }
+  else if(nm==='bucket'){
+    const k=Math.ceil(Math.sqrt(n));setT('x1-bucket',k);
+    const mx=Math.max(...arr)+1,buckets=Array.from({length:k},()=>[]);let writes=0;
+    const bcols=['bucket0','bucket1','bucket2','bucket3','bucket4'],bc={};
+    setConcept('bucket','Scatter step: assigning each value to a bucket based on its range.');
+    renderBucketBoard('Bucket',buckets);
+    for(let i=0;i<n&&!X();i++){
+      const bi=Math.min(Math.floor(arr[i]/mx*k),k-1);
+      buckets[bi].push(arr[i]);
+      bc[i]=bcols[bi%bcols.length];
+      render(nm,{bc:{...bc}});
+      setConcept('bucket','Scatter: placing value '+arr[i]+' into bucket '+bi+'.');
+      renderBucketBoard('Bucket',buckets);
+      await slp(delay(nm));
+    }
+    let maxBs=0;buckets.forEach(b=>{if(b.length>maxBs)maxBs=b.length});setT('x2-bucket',maxBs);
+    setConcept('bucket','Sorting step: sorting each bucket (insertion sort works well on small buckets).');
+    for(let bi=0;bi<k&&!X();bi++){
+      const b=buckets[bi];
+      setConcept('bucket','Sorting bucket '+bi+' with insertion sort (size '+b.length+').');
+      for(let i=1;i<b.length;i++){let key=b[i],j=i-1;while(j>=0&&b[j]>key){b[j+1]=b[j];j--}b[j+1]=key}
+      renderBucketBoard('Bucket',buckets);
+      await slp(Math.max(10,delay(nm)));
+    }
+    let idx=0;
+    setConcept('bucket','Gather step: concatenating buckets back into the main array in order.');
+    for(let bi=0;bi<k&&!X();bi++){for(let j=0;j<buckets[bi].length&&!X();j++){arr[idx]=buckets[bi][j];writes++;idx++;setT('swaps-bucket',writes);render(nm,{sorted:new Set(Array.from({length:idx},(_,k)=>k))});await slp(delay(nm))}}
+  }
+
+  if(!X())render(nm,{sorted:new Set(Array.from({length:n},(_,i)=>i))});
+  S.running=false;
+}
+
+['insertion','selection','bubble','merge','quick','heap','counting','radix','bucket'].forEach(initD);
+</script>
+</body>
+</html>
