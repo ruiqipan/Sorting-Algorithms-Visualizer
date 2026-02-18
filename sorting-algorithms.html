@@ -287,7 +287,6 @@
       <tr><td class="algo-name">Counting Sort</td><td class="best-cell">O(n+k)</td><td class="avg-cell">O(n+k)</td><td class="worst-cell">O(n+k)</td><td class="space-cell">O(n+k)</td><td>Yes</td></tr>
       <tr><td class="algo-name">Radix Sort</td><td class="best-cell">O(d(n+k))</td><td class="avg-cell">O(d(n+k))</td><td class="worst-cell">O(d(n+k))</td><td class="space-cell">O(n+k)</td><td>Yes</td></tr>
       <tr><td class="algo-name">Bucket Sort</td><td class="best-cell">O(n+k)</td><td class="avg-cell">O(n+k)</td><td class="worst-cell">O(n²)</td><td class="space-cell">O(n+k)</td><td>Yes*</td></tr>
-      <tr class="is-hidden" id="row-overview-bogo"><td class="algo-name">Bogo Sort</td><td class="best-cell">O(n)</td><td class="avg-cell">O(n·n!)</td><td class="worst-cell">O(∞)</td><td class="space-cell">O(1)</td><td>No</td></tr>
     </tbody></table></div>
     <div class="case-legend" aria-label="Complexity color legend">
       <span class="item"><span class="dot best"></span>Best case</span>
@@ -306,7 +305,6 @@
     <div class="overview-card" data-algo="counting"><h4>Counting Sort</h4><p class="summary">Non-comparison: count value occurrences. Linear time when range k is small.</p><div class="mini-complexity"><span><span class="dot best-dot"></span>O(n+k)</span><span><span class="dot avg-dot"></span>O(n+k)</span><span><span class="dot worst-dot"></span>O(n+k)</span></div></div>
     <div class="overview-card" data-algo="radix"><h4>Radix Sort</h4><p class="summary">Sort digit-by-digit with a stable sub-sort. Beats O(n log n) for fixed-width integers.</p><div class="mini-complexity"><span><span class="dot best-dot"></span>O(d(n+k))</span><span><span class="dot avg-dot"></span>O(d(n+k))</span><span><span class="dot worst-dot"></span>O(d(n+k))</span></div></div>
     <div class="overview-card" data-algo="bucket"><h4>Bucket Sort</h4><p class="summary">Distribute into buckets, sort each, concatenate. Excellent for uniform distributions.</p><div class="mini-complexity"><span><span class="dot best-dot"></span>O(n+k)</span><span><span class="dot avg-dot"></span>O(n+k)</span><span><span class="dot worst-dot"></span>O(n²)</span></div></div>
-    <div class="overview-card is-hidden" id="card-bogo" data-algo="bogo"><h4>Bogo Sort</h4><p class="summary">Shuffle until sorted. If it feels slow, that's because it is. (This is an easter egg.)</p><div class="mini-complexity"><span><span class="dot best-dot"></span>O(n)</span><span><span class="dot avg-dot"></span>O(n·n!)</span><span><span class="dot worst-dot"></span>O(∞)</span></div></div>
   </div>
 </section>
 
@@ -412,7 +410,6 @@
     <tr><td class="algo-name">Counting</td><td class="best-cell">O(n+k)</td><td class="avg-cell">O(n+k)</td><td class="worst-cell">O(n+k)</td><td class="space-cell">O(n+k)</td><td>✅</td><td>❌</td><td>❌</td><td>Integer keys</td></tr>
     <tr><td class="algo-name">Radix</td><td class="best-cell">O(d(n+k))</td><td class="avg-cell">O(d(n+k))</td><td class="worst-cell">O(d(n+k))</td><td class="space-cell">O(n+k)</td><td>✅</td><td>❌</td><td>❌</td><td>Digit-by-digit</td></tr>
     <tr><td class="algo-name">Bucket</td><td class="best-cell">O(n+k)</td><td class="avg-cell">O(n+k)</td><td class="worst-cell">O(n²)</td><td class="space-cell">O(n+k)</td><td>✅*</td><td>❌</td><td>❌</td><td>Distribution</td></tr>
-    <tr class="is-hidden" id="row-compare-bogo"><td class="algo-name">Bogo</td><td class="best-cell">O(n)</td><td class="avg-cell">O(n·n!)</td><td class="worst-cell">O(∞)</td><td class="space-cell">O(1)</td><td>❌</td><td>✅</td><td>❌</td><td>Random shuffles</td></tr>
   </tbody></table></div></div>
   <div class="block"><h3><span class="icon">🧠</span> Decision Guide: Which Sort?</h3><div class="steps-container">
     <div class="step"><div class="step-num">1</div><div class="step-text"><strong>Small array (n ≤ ~50)?</strong> → <strong>Insertion sort</strong>.</div></div>
