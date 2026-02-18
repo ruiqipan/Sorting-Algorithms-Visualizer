@@ -53,7 +53,7 @@ function genRadix(n){
 function inv(a){let c=0;for(let i=0;i<a.length;i++)for(let j=i+1;j<a.length;j++)if(a[i]>a[j])c++;return c}
 function $(id){return document.getElementById(id)}
 function setT(id,v){const e=$(id);if(e)e.textContent=v}
-function sizeFor(nm){if(nm==='counting')return COUNTING_N; if(nm==='radix')return RADIX_N; if(nm==='bogo')return BOGO_N; return N}
+function sizeFor(nm){if(nm==='counting')return COUNTING_N; if(nm==='radix')return RADIX_N; if(nm==='bogo')return BOGO_N; if(nm==='heap')return 31; return N}
 
 const conceptDefaults={
   insertion:'Press Run to watch insertion sort build the sorted prefix one key at a time.',
@@ -61,7 +61,7 @@ const conceptDefaults={
   bubble:'Press Run to watch each pass bubble the largest remaining element to the end.',
   merge:'Press Run to watch merge sort recursively split the array and then merge sorted subarrays.',
   quick:'Press Run to watch quicksort choose pivots, partition the array, and recurse on subarrays.',
-  heap:'Press Run to watch heap sort build a max-heap and repeatedly extract the maximum.',
+  heap:'Press Run to see the array and its heap side by side. Yellow = comparing, red = swapping, green = already in sorted position.',
   counting:'Press Run to watch counting sort build a count array, compute prefix sums, and place elements into their final positions.',
   radix:'Press Run to watch radix sort distribute elements into digit buckets for each pass.',
   bucket:'Press Run to watch bucket sort scatter elements into buckets, sort within each bucket, and then gather them back.',
@@ -261,6 +261,10 @@ function setMergeActive(rangeOrNull,r2){
 }
 
 function render(nm,hl={}){
+  if(nm==='heap'){
+    renderHeapView(nm,hl);
+    return;
+  }
   const c=$('bars-'+nm);if(!c)return;
   const arr=D[nm].arr,mx=Math.max(...arr);c.innerHTML='';
   arr.forEach((v,i)=>{
@@ -286,6 +290,93 @@ function render(nm,hl={}){
     else if(hl.bc&&hl.bc[i])b.classList.add(hl.bc[i]);
     c.appendChild(b);
   });
+}
+
+function renderHeapView(nm,hl){
+  const arr=D[nm]?.arr;if(!arr)return;
+  const n=arr.length;
+  const sorted=hl.sorted||new Set();
+  const heapSize=n-sorted.size;
+
+  const arrayEl=$('heap-array'),treeEl=$('heap-tree');
+  if(!arrayEl||!treeEl)return;
+  arrayEl.innerHTML='';
+  treeEl.innerHTML='';
+  function cellClass(i){
+    if(hl.sorted&&hl.sorted.has(i))return 'sorted';
+    if(hl.sw&&hl.sw.has(i))return 'swapping';
+    if(hl.cmp&&hl.cmp.has(i))return 'comparing';
+    return '';
+  }
+  // Array: single row of rectangles
+  for(let i=0;i<n;i++){
+    const cell=document.createElement('div');
+    cell.className='heap-array-cell'+ (cellClass(i)?' '+cellClass(i):'');
+    cell.dataset.idx=String(i);
+    const idxSpan=document.createElement('span');idxSpan.className='heap-cell-idx';idxSpan.textContent=String(i);
+    const valSpan=document.createElement('span');valSpan.className='heap-cell-val';valSpan.textContent=String(arr[i]);
+    cell.appendChild(idxSpan);cell.appendChild(valSpan);
+    arrayEl.appendChild(cell);
+  }
+  // Tree: SVG with circles and connecting lines (only heap region 0..heapSize-1)
+  if(heapSize<=0)return;
+  const levels=Math.max(1,Math.ceil(Math.log2(heapSize+1)));
+  const levelHeight=48;
+  const radius=18;
+  const pad=radius+8;
+  const treeW=800;
+  const treeH=levels*levelHeight+2*pad;
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox','0 0 '+treeW+' '+treeH);
+  svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+  function nodePos(i){
+    const L=Math.floor(Math.log2(i+1));
+    const posInLevel=i-((1<<L)-1);
+    const nodesInLevel=1<<L;
+    const x=(posInLevel+0.5)*(treeW/nodesInLevel);
+    const y=pad+(L+0.5)*levelHeight;
+    return{x,y};
+  }
+  const edges=document.createElementNS('http://www.w3.org/2000/svg','g');
+  edges.setAttribute('class','heap-edges');
+  for(let i=0;i<heapSize;i++){
+    const left=2*i+1,right=2*i+2;
+    const p=nodePos(i);
+    if(left<heapSize){
+      const c=nodePos(left);
+      const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('class','heap-edge');
+      line.setAttribute('x1',p.x);line.setAttribute('y1',p.y);
+      line.setAttribute('x2',c.x);line.setAttribute('y2',c.y);
+      edges.appendChild(line);
+    }
+    if(right<heapSize){
+      const c=nodePos(right);
+      const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('class','heap-edge');
+      line.setAttribute('x1',p.x);line.setAttribute('y1',p.y);
+      line.setAttribute('x2',c.x);line.setAttribute('y2',c.y);
+      edges.appendChild(line);
+    }
+  }
+  svg.appendChild(edges);
+  const nodes=document.createElementNS('http://www.w3.org/2000/svg','g');
+  nodes.setAttribute('class','heap-nodes');
+  for(let i=0;i<heapSize;i++){
+    const cls=cellClass(i);
+    const{x,y}=nodePos(i);
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('class','heap-node-circle'+(cls?' '+cls:''));
+    circle.setAttribute('cx',x);circle.setAttribute('cy',y);circle.setAttribute('r',radius);
+    nodes.appendChild(circle);
+    const text=document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('class','heap-node-text');
+    text.setAttribute('x',x);text.setAttribute('y',y);
+    text.textContent=String(arr[i]);
+    nodes.appendChild(text);
+  }
+  svg.appendChild(nodes);
+  treeEl.appendChild(svg);
 }
 
 function ensureRadixBuckets(){
@@ -549,14 +640,28 @@ async function go(nm){
   }
   else if(nm==='heap'){
     let extr=0;
+    const s2ForSz=function(sz){return new Set(Array.from({length:n-sz},(_,k)=>n-1-k));};
     async function sd(sz,i){
+      const s2=s2ForSz(sz);
       let lg=i,l=2*i+1,r=2*i+2;
-      if(l<sz){comps++;setT('comps-heap',comps);if(arr[l]>arr[lg])lg=l}
-      if(r<sz){comps++;setT('comps-heap',comps);if(arr[r]>arr[lg])lg=r}
-      if(lg!==i&&!X()){const s2=new Set(Array.from({length:n-sz},(_,k)=>n-1-k));[arr[i],arr[lg]]=[arr[lg],arr[i]];swaps++;setT('swaps-heap',swaps);render(nm,{sw:new Set([i,lg]),sorted:s2});await sleepControlled(nm,delay(nm));await sd(sz,lg)}
+      if(l<sz){
+        comps++;setT('comps-heap',comps);
+        render(nm,{cmp:new Set([i,l]),sorted:s2});await sleepControlled(nm,delay(nm));
+        if(arr[l]>arr[lg])lg=l;
+      }
+      if(r<sz){
+        comps++;setT('comps-heap',comps);
+        render(nm,{cmp:new Set([i,r]),sorted:s2});await sleepControlled(nm,delay(nm));
+        if(arr[r]>arr[lg])lg=r;
+      }
+      if(lg!==i&&!X()){
+        [arr[i],arr[lg]]=[arr[lg],arr[i]];swaps++;setT('swaps-heap',swaps);
+        render(nm,{sw:new Set([i,lg]),sorted:s2});await sleepControlled(nm,delay(nm));
+        await sd(sz,lg);
+      }
     }
-    for(let i=(n>>1)-1;i>=0&&!X();i--){setConcept('heap','Building max-heap: sift-down at index '+i+' within heap size '+n+'.');await sd(n,i);}
-    for(let i=n-1;i>0&&!X();i--){setConcept('heap','Extracting current maximum at root into position '+i+'; heap shrinks to size '+i+'.');[arr[0],arr[i]]=[arr[i],arr[0]];swaps++;extr++;setT('swaps-heap',swaps);setT('x1-heap',extr);const s2=new Set(Array.from({length:n-i},(_,k)=>n-1-k));render(nm,{sw:new Set([0,i]),sorted:s2});await sleepControlled(nm,delay(nm));await sd(i,0)}
+    for(let i=(n>>1)-1;i>=0&&!X();i--){setConcept('heap','Building max-heap: sift-down at index '+i+' (compare parent with children, swap if a child is larger).');await sd(n,i);}
+    for(let i=n-1;i>0&&!X();i--){setConcept('heap','Extract max: swap root with last heap element (index '+i+'); the max is now in place. Sift-down the new root.');[arr[0],arr[i]]=[arr[i],arr[0]];swaps++;extr++;setT('swaps-heap',swaps);setT('x1-heap',extr);const s2=s2ForSz(i);render(nm,{sw:new Set([0,i]),sorted:s2});await sleepControlled(nm,delay(nm));await sd(i,0)}
   }
   else if(nm==='counting'){
     const mn=Math.min(...arr),mx=Math.max(...arr),k=mx-mn+1;setT('x1-counting',k);
