@@ -25,7 +25,7 @@ This project has **no build step** and **no dependencies**.
 
 ### Option 1: Open the file directly
 
-Open `sorting-algorithms.html` in your browser.
+Open `index.html` (or `sorting-algorithms.html`) in your browser.
 
 ### Option 2: Serve with a local web server (recommended)
 
@@ -36,7 +36,7 @@ cd "Sorting Algorithms"
 python3 -m http.server 8000
 ```
 
-Then visit `http://localhost:8000/sorting-algorithms.html`.
+Then visit `http://localhost:8000/` (or `http://localhost:8000/sorting-algorithms.html`).
 
 ## Project structure
 
