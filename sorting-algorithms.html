@@ -156,6 +156,11 @@
   .bar.bucket2 { background: #ec4899 !important; }
   .bar.bucket3 { background: #b45309 !important; }
   .bar.bucket4 { background: #f97316 !important; }
+  .bar.bucket5 { background: #2563eb !important; }
+  .bar.bucket6 { background: #059669 !important; }
+  .bar.bucket7 { background: #dc2626 !important; }
+  .bar.bucket8 { background: #9333ea !important; }
+  .bar.bucket9 { background: #0891b2 !important; }
   /* Merge sort subarray colors are applied inline (many distinct hues). */
 
   .color-legend { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
@@ -172,6 +177,11 @@
   .swatch.bucket2 { background: #ec4899; }
   .swatch.bucket3 { background: #b45309; }
   .swatch.bucket4 { background: #f97316; }
+  .swatch.bucket5 { background: #2563eb; }
+  .swatch.bucket6 { background: #059669; }
+  .swatch.bucket7 { background: #dc2626; }
+  .swatch.bucket8 { background: #9333ea; }
+  .swatch.bucket9 { background: #0891b2; }
 
   .demo-stats { display: flex; gap: 18px; margin-top: 10px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 12.5px; color: var(--text-dim); }
   .demo-stats span strong { color: var(--text); }
@@ -186,9 +196,17 @@
   .bucket-col.bucket2 { background: rgba(236,72,153,0.10); border-color: rgba(236,72,153,0.55); }
   .bucket-col.bucket3 { background: rgba(180,83,9,0.10); border-color: rgba(180,83,9,0.55); }
   .bucket-col.bucket4 { background: rgba(249,115,22,0.10); border-color: rgba(249,115,22,0.55); }
+  .bucket-col.bucket5 { background: rgba(37,99,235,0.10); border-color: rgba(37,99,235,0.55); }
+  .bucket-col.bucket6 { background: rgba(5,150,105,0.10); border-color: rgba(5,150,105,0.55); }
+  .bucket-col.bucket7 { background: rgba(220,38,38,0.10); border-color: rgba(220,38,38,0.55); }
+  .bucket-col.bucket8 { background: rgba(147,51,234,0.10); border-color: rgba(147,51,234,0.55); }
+  .bucket-col.bucket9 { background: rgba(8,145,178,0.10); border-color: rgba(8,145,178,0.55); }
   .bucket-col-title { font-family: var(--font-display); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 4px; }
   .bucket-items { display: flex; flex-wrap: wrap; gap: 4px; }
-  .bucket-chip { padding: 2px 6px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); font-size: 11px; color: var(--text); }
+  .bucket-chip { padding: 2px 6px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); font-size: 11px; color: var(--text); transition: background 0.15s, border-color 0.15s; }
+  .bucket-chip.comparing { background: #eab308 !important; border-color: #ca8a04 !important; color: #1a1a1a !important; font-weight: 600; }
+  .bucket-chip.swapping { background: #dc2626 !important; border-color: #b91c1c !important; color: white !important; font-weight: 600; }
+  .bucket-chip.sorted { background: #16a34a !important; border-color: #15803d !important; color: white !important; font-weight: 600; }
   .count-array { display: flex; flex-wrap: wrap; gap: 6px; }
   .count-cell { min-width: 46px; padding: 4px 6px; border-radius: 6px; background: var(--surface3); border: 1px solid var(--border); text-align: center; }
   .count-cell-key { display: block; font-size: 10px; font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
@@ -536,7 +554,33 @@ function renderMergePanel(label,left,right){
   e.textContent=label+' Left: ['+left.join(', ')+'] | Right: ['+right.join(', ')+']';
 }
 
-function renderBucketBoard(labelPrefix,buckets,ranges,colors){
+function renderBucketLegend(k){
+  const legend=$('legend-bucket');if(!legend)return;
+  legend.innerHTML='';
+  const allBucketColors=['bucket0','bucket1','bucket2','bucket3','bucket4','bucket5','bucket6','bucket7','bucket8','bucket9'];
+  const item1=document.createElement('span');item1.className='legend-item';
+  const sw1=document.createElement('span');sw1.className='swatch unsorted';
+  item1.appendChild(sw1);item1.appendChild(document.createTextNode('Unassigned'));
+  legend.appendChild(item1);
+  for(let i=0;i<k;i++){
+    const item=document.createElement('span');item.className='legend-item';
+    const sw=document.createElement('span');sw.className='swatch '+allBucketColors[i%allBucketColors.length];
+    item.appendChild(sw);
+    const label='Bucket '+String.fromCharCode(65+(i%26));
+    item.appendChild(document.createTextNode(label));
+    legend.appendChild(item);
+  }
+  const item2=document.createElement('span');item2.className='legend-item';
+  const sw2=document.createElement('span');sw2.className='swatch swapping';
+  item2.appendChild(sw2);item2.appendChild(document.createTextNode('Writing'));
+  legend.appendChild(item2);
+  const item3=document.createElement('span');item3.className='legend-item';
+  const sw3=document.createElement('span');sw3.className='swatch sorted';
+  item3.appendChild(sw3);item3.appendChild(document.createTextNode('Gathered (sorted)'));
+  legend.appendChild(item3);
+}
+
+function renderBucketBoard(labelPrefix,buckets,ranges,colors,highlight){
   const board=$('bucket-board')||$('digit-buckets');if(!board)return;
   board.innerHTML='';
   const k=buckets.length;
@@ -554,7 +598,17 @@ function renderBucketBoard(labelPrefix,buckets,ranges,colors){
       title.textContent=baseLabel;
     }
     const items=document.createElement('div');items.className='bucket-items';
-    buckets[i].forEach(v=>{const chip=document.createElement('div');chip.className='bucket-chip';chip.textContent=String(v);items.appendChild(chip)});
+    buckets[i].forEach((v,idx)=>{
+      const chip=document.createElement('div');
+      chip.className='bucket-chip';
+      chip.textContent=String(v);
+      if(highlight&&highlight.bucketIdx===i){
+        if(highlight.sorted&&highlight.sorted.has(idx))chip.classList.add('sorted');
+        else if(highlight.swapping&&highlight.swapping.has(idx))chip.classList.add('swapping');
+        else if(highlight.comparing&&highlight.comparing.has(idx))chip.classList.add('comparing');
+      }
+      items.appendChild(chip);
+    });
     col.appendChild(title);col.appendChild(items);board.appendChild(col);
   }
 }
@@ -639,7 +693,12 @@ function initD(nm){
   if(nm==='insertion')setT('x1-insertion',inv(D[nm].arr));
   if(nm==='counting'){const a=D[nm].arr;setT('x1-counting',Math.max(...a)-Math.min(...a)+1)}
   if(nm==='radix'){setT('x1-radix',Math.max(...D[nm].arr).toString().length);setT('x2-radix','–')}
-  if(nm==='bucket'){setT('x1-bucket',Math.ceil(Math.sqrt(D[nm].arr.length)));setT('x2-bucket','–')}
+  if(nm==='bucket'){
+    const k=Math.ceil(Math.sqrt(D[nm].arr.length));
+    setT('x1-bucket',k);
+    setT('x2-bucket','–');
+    renderBucketLegend(k);
+  }
   if(nm==='bogo'){setT('x1-bogo',BOGO_MAX_ATTEMPTS)}
   if(conceptDefaults[nm])setConcept(nm,conceptDefaults[nm]);
   clearAuxPanels(nm);
@@ -764,7 +823,12 @@ function reset(nm){
   if(nm==='bubble')setT('x1-bubble','0');
   if(nm==='counting'){const a=D[nm].arr;setT('x1-counting',Math.max(...a)-Math.min(...a)+1)}
   if(nm==='radix'){setT('x1-radix',Math.max(...D[nm].arr).toString().length);setT('x2-radix','–')}
-  if(nm==='bucket'){setT('x1-bucket',Math.ceil(Math.sqrt(D[nm].arr.length)));setT('x2-bucket','–')}
+  if(nm==='bucket'){
+    const k=Math.ceil(Math.sqrt(D[nm].arr.length));
+    setT('x1-bucket',k);
+    setT('x2-bucket','–');
+    renderBucketLegend(k);
+  }
   if(nm==='bogo'){setT('x1-bogo',BOGO_MAX_ATTEMPTS)}
   if(nm==='radix')renderRadixBoard();
   else render(nm);
@@ -1043,7 +1107,9 @@ async function go(nm){
     const k=Math.ceil(Math.sqrt(n));setT('x1-bucket',k);
     const mn=Math.min(...arr),mxVal=Math.max(...arr),spanRaw=mxVal-mn+1;
     const buckets=Array.from({length:k},()=>[]);let writes=0;
-    const bcols=['bucket0','bucket1','bucket2','bucket3','bucket4'],bc={};
+    const allBucketColors=['bucket0','bucket1','bucket2','bucket3','bucket4','bucket5','bucket6','bucket7','bucket8','bucket9'];
+    const bcols=allBucketColors.slice(0,Math.min(k,allBucketColors.length));
+    const bc={};
     const bucketRanges=[];
     if(spanRaw>0){
       for(let bi=0;bi<k;bi++){
@@ -1054,6 +1120,7 @@ async function go(nm){
     }else{
       for(let bi=0;bi<k;bi++)bucketRanges.push({low:mn,high:mn});
     }
+    renderBucketLegend(k);
     setConcept('bucket','Scatter step: assigning each value to a bucket based on its range.');
     renderBucketBoard('Bucket',buckets,bucketRanges,bcols);
     const denom=spanRaw||1;
@@ -1071,10 +1138,34 @@ async function go(nm){
     setConcept('bucket','Sorting step: sorting each bucket (insertion sort works well on small buckets).');
     for(let bi=0;bi<k&&!X();bi++){
       const b=buckets[bi];
-      setConcept('bucket','Sorting bucket '+bi+' with insertion sort (size '+b.length+').');
-      for(let i=1;i<b.length;i++){let key=b[i],j=i-1;while(j>=0&&b[j]>key){b[j+1]=b[j];j--}b[j+1]=key}
-      renderBucketBoard('Bucket',buckets);
-      await sleepControlled(nm,Math.max(10,delay(nm)));
+      if(b.length>1){
+        setConcept('bucket','Sorting bucket '+String.fromCharCode(65+(bi%26))+' with insertion sort (size '+b.length+').');
+        renderBucketBoard('Bucket',buckets,bucketRanges,bcols);
+        await sleepControlled(nm,Math.max(8,delay(nm)*0.4));
+        const sorted=new Set([0]);
+        for(let i=1;i<b.length&&!X();i++){
+          let key=b[i],j=i-1;
+          setConcept('bucket','Inserting '+key+' into sorted prefix of bucket '+String.fromCharCode(65+(bi%26))+'.');
+          renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{bucketIdx:bi,comparing:new Set([i]),sorted:sorted});
+          await sleepControlled(nm,Math.max(6,delay(nm)*0.3));
+          while(j>=0&&b[j]>key&&!X()){
+            setConcept('bucket','Comparing '+key+' with '+b[j]+' in bucket '+String.fromCharCode(65+(bi%26))+'; shifting right.');
+            renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{bucketIdx:bi,comparing:new Set([j,j+1]),sorted:sorted});
+            await sleepControlled(nm,Math.max(6,delay(nm)*0.3));
+            b[j+1]=b[j];
+            renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{bucketIdx:bi,swapping:new Set([j+1]),sorted:sorted});
+            await sleepControlled(nm,Math.max(6,delay(nm)*0.3));
+            j--;
+          }
+          b[j+1]=key;
+          sorted.add(j+1);
+          renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{bucketIdx:bi,sorted:sorted});
+          await sleepControlled(nm,Math.max(6,delay(nm)*0.3));
+        }
+        setConcept('bucket','Bucket '+String.fromCharCode(65+(bi%26))+' is now sorted.');
+        renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{bucketIdx:bi,sorted:new Set(Array.from({length:b.length},(_,idx)=>idx))});
+        await sleepControlled(nm,Math.max(8,delay(nm)*0.4));
+      }
     }
     let idx=0;
     setConcept('bucket','Gather step: concatenating buckets back into the main array in order.');

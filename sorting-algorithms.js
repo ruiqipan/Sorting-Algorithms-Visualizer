@@ -33,6 +33,23 @@ const RADIX_N=20;
 const BOGO_N=12, BOGO_MAX_ATTEMPTS=5000;
 function gen(n){const a=[];for(let i=0;i<n;i++)a.push(Math.floor(Math.random()*180)+20);return a}
 function genCounting(n){const a=[];for(let i=0;i<n;i++)a.push(Math.floor(Math.random()*(COUNTING_MAX-COUNTING_MIN+1))+COUNTING_MIN);return a}
+function genRadix(n){
+  const a=[];
+  for(let i=0;i<n;i++){
+    // Generate diverse numbers: mix of 2-digit (20-99) and 3-digit (100-999) numbers
+    // Ensure good distribution across hundreds digits (1-9)
+    if(Math.random()<0.4){
+      // 40% chance: 2-digit numbers (20-99)
+      a.push(Math.floor(Math.random()*80)+20);
+    }else{
+      // 60% chance: 3-digit numbers (100-999) with diverse hundreds digits
+      const hundreds=Math.floor(Math.random()*9)+1; // 1-9
+      const remainder=Math.floor(Math.random()*100); // 0-99
+      a.push(hundreds*100+remainder);
+    }
+  }
+  return a;
+}
 function inv(a){let c=0;for(let i=0;i<a.length;i++)for(let j=i+1;j<a.length;j++)if(a[i]>a[j])c++;return c}
 function $(id){return document.getElementById(id)}
 function setT(id,v){const e=$(id);if(e)e.textContent=v}
@@ -84,7 +101,33 @@ function renderMergePanel(label,left,right){
   e.textContent=label+' Left: ['+left.join(', ')+'] | Right: ['+right.join(', ')+']';
 }
 
-function renderBucketBoard(labelPrefix,buckets,ranges,colors){
+function renderBucketLegend(k){
+  const legend=$('legend-bucket');if(!legend)return;
+  legend.innerHTML='';
+  const allBucketColors=['bucket0','bucket1','bucket2','bucket3','bucket4','bucket5','bucket6','bucket7','bucket8','bucket9'];
+  const item1=document.createElement('span');item1.className='legend-item';
+  const sw1=document.createElement('span');sw1.className='swatch unsorted';
+  item1.appendChild(sw1);item1.appendChild(document.createTextNode('Unassigned'));
+  legend.appendChild(item1);
+  for(let i=0;i<k;i++){
+    const item=document.createElement('span');item.className='legend-item';
+    const sw=document.createElement('span');sw.className='swatch '+allBucketColors[i%allBucketColors.length];
+    item.appendChild(sw);
+    const label='Bucket '+String.fromCharCode(65+(i%26));
+    item.appendChild(document.createTextNode(label));
+    legend.appendChild(item);
+  }
+  const item2=document.createElement('span');item2.className='legend-item';
+  const sw2=document.createElement('span');sw2.className='swatch swapping';
+  item2.appendChild(sw2);item2.appendChild(document.createTextNode('Writing'));
+  legend.appendChild(item2);
+  const item3=document.createElement('span');item3.className='legend-item';
+  const sw3=document.createElement('span');sw3.className='swatch sorted';
+  item3.appendChild(sw3);item3.appendChild(document.createTextNode('Gathered (sorted)'));
+  legend.appendChild(item3);
+}
+
+function renderBucketBoard(labelPrefix,buckets,ranges,colors,highlight){
   const board=$('bucket-board')||$('digit-buckets');if(!board)return;
   board.innerHTML='';
   const k=buckets.length;
@@ -102,7 +145,17 @@ function renderBucketBoard(labelPrefix,buckets,ranges,colors){
       title.textContent=baseLabel;
     }
     const items=document.createElement('div');items.className='bucket-items';
-    buckets[i].forEach(v=>{const chip=document.createElement('div');chip.className='bucket-chip';chip.textContent=String(v);items.appendChild(chip)});
+    buckets[i].forEach((v,idx)=>{
+      const chip=document.createElement('div');
+      chip.className='bucket-chip';
+      chip.textContent=String(v);
+      if(highlight&&highlight.bucketIdx===i){
+        if(highlight.sorted&&highlight.sorted.has(idx))chip.classList.add('sorted');
+        else if(highlight.swapping&&highlight.swapping.has(idx))chip.classList.add('swapping');
+        else if(highlight.comparing&&highlight.comparing.has(idx))chip.classList.add('comparing');
+      }
+      items.appendChild(chip);
+    });
     col.appendChild(title);col.appendChild(items);board.appendChild(col);
   }
 }
@@ -146,6 +199,7 @@ function makeCaseArray(nm,cs){
   const size=sizeFor(nm);
   const base=gen(size);
   if(nm==='counting')return genCounting(size);
+  if(nm==='radix')return genRadix(size);
   if(nm==='insertion' || nm==='bubble'){
     if(cs==='best')return [...base].sort((a,b)=>a-b);
     if(cs==='worst')return [...base].sort((a,b)=>b-a);
@@ -187,7 +241,12 @@ function initD(nm){
   if(nm==='insertion')setT('x1-insertion',inv(D[nm].arr));
   if(nm==='counting'){const a=D[nm].arr;setT('x1-counting',Math.max(...a)-Math.min(...a)+1)}
   if(nm==='radix'){setT('x1-radix',Math.max(...D[nm].arr).toString().length);setT('x2-radix','–')}
-  if(nm==='bucket'){setT('x1-bucket',Math.ceil(Math.sqrt(D[nm].arr.length)));setT('x2-bucket','–')}
+  if(nm==='bucket'){
+    const k=Math.ceil(Math.sqrt(D[nm].arr.length));
+    setT('x1-bucket',k);
+    setT('x2-bucket','–');
+    renderBucketLegend(k);
+  }
   if(nm==='bogo'){setT('x1-bogo',BOGO_MAX_ATTEMPTS)}
   if(conceptDefaults[nm])setConcept(nm,conceptDefaults[nm]);
   clearAuxPanels(nm);
@@ -242,10 +301,14 @@ function ensureRadixBuckets(){
   bucketsEl.dataset.ready='1';
   return bucketsEl;
 }
+function padRadixNumber(v){
+  // Pad numbers less than 100 with leading zeros (e.g., 43 -> 043)
+  return v<100?String(v).padStart(3,'0'):String(v);
+}
 function radixItemEl(v){
   const el=document.createElement('div');
   el.className='radix-item';
-  el.textContent=String(v);
+  el.textContent=padRadixNumber(v);
   el.dataset.value=String(v);
   return el;
 }
@@ -312,7 +375,12 @@ function reset(nm){
   if(nm==='bubble')setT('x1-bubble','0');
   if(nm==='counting'){const a=D[nm].arr;setT('x1-counting',Math.max(...a)-Math.min(...a)+1)}
   if(nm==='radix'){setT('x1-radix',Math.max(...D[nm].arr).toString().length);setT('x2-radix','–')}
-  if(nm==='bucket'){setT('x1-bucket',Math.ceil(Math.sqrt(D[nm].arr.length)));setT('x2-bucket','–')}
+  if(nm==='bucket'){
+    const k=Math.ceil(Math.sqrt(D[nm].arr.length));
+    setT('x1-bucket',k);
+    setT('x2-bucket','–');
+    renderBucketLegend(k);
+  }
   if(nm==='bogo'){setT('x1-bogo',BOGO_MAX_ATTEMPTS)}
   if(nm==='radix')renderRadixBoard();
   else render(nm);
@@ -540,13 +608,16 @@ async function go(nm){
       // Clear any previous digit highlighting before starting this pass.
       for(const el of items){
         const raw=el.dataset.value;
-        if(raw!=null)el.textContent=raw;
+        if(raw!=null){
+          const v=parseInt(raw,10);
+          el.textContent=padRadixNumber(v);
+        }
       }
       for(let i=0;i<items.length&&!X();i++){
         const el=items[i];
         el.classList.add('active');
         const v=parseInt(el.dataset.value,10);
-        const vStr=el.dataset.value||String(v);
+        const vStr=padRadixNumber(v);
         const digit=Math.floor(v/exp)%10;
         const target=$('radix-bucket-'+digit);
         const highlightIndex=vStr.length-1-dig;
@@ -591,7 +662,9 @@ async function go(nm){
     const k=Math.ceil(Math.sqrt(n));setT('x1-bucket',k);
     const mn=Math.min(...arr),mxVal=Math.max(...arr),spanRaw=mxVal-mn+1;
     const buckets=Array.from({length:k},()=>[]);let writes=0;
-    const bcols=['bucket0','bucket1','bucket2','bucket3','bucket4'],bc={};
+    const allBucketColors=['bucket0','bucket1','bucket2','bucket3','bucket4','bucket5','bucket6','bucket7','bucket8','bucket9'];
+    const bcols=allBucketColors.slice(0,Math.min(k,allBucketColors.length));
+    const bc={};
     const bucketRanges=[];
     if(spanRaw>0){
       for(let bi=0;bi<k;bi++){
@@ -602,6 +675,7 @@ async function go(nm){
     }else{
       for(let bi=0;bi<k;bi++)bucketRanges.push({low:mn,high:mn});
     }
+    renderBucketLegend(k);
     setConcept('bucket','Scatter step: assigning each value to a bucket based on its range.');
     renderBucketBoard('Bucket',buckets,bucketRanges,bcols);
     const denom=spanRaw||1;
@@ -619,10 +693,34 @@ async function go(nm){
     setConcept('bucket','Sorting step: sorting each bucket (insertion sort works well on small buckets).');
     for(let bi=0;bi<k&&!X();bi++){
       const b=buckets[bi];
-      setConcept('bucket','Sorting bucket '+bi+' with insertion sort (size '+b.length+').');
-      for(let i=1;i<b.length;i++){let key=b[i],j=i-1;while(j>=0&&b[j]>key){b[j+1]=b[j];j--}b[j+1]=key}
-      renderBucketBoard('Bucket',buckets);
-      await sleepControlled(nm,Math.max(10,delay(nm)));
+      if(b.length>1){
+        setConcept('bucket','Sorting bucket '+String.fromCharCode(65+(bi%26))+' with insertion sort (size '+b.length+').');
+        renderBucketBoard('Bucket',buckets,bucketRanges,bcols);
+        await sleepControlled(nm,Math.max(8,delay(nm)*0.4));
+        const sorted=new Set([0]);
+        for(let i=1;i<b.length&&!X();i++){
+          let key=b[i],j=i-1;
+          setConcept('bucket','Inserting '+key+' into sorted prefix of bucket '+String.fromCharCode(65+(bi%26))+'.');
+          renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{bucketIdx:bi,comparing:new Set([i]),sorted:sorted});
+          await sleepControlled(nm,Math.max(6,delay(nm)*0.3));
+          while(j>=0&&b[j]>key&&!X()){
+            setConcept('bucket','Comparing '+key+' with '+b[j]+' in bucket '+String.fromCharCode(65+(bi%26))+'; shifting right.');
+            renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{bucketIdx:bi,comparing:new Set([j,j+1]),sorted:sorted});
+            await sleepControlled(nm,Math.max(6,delay(nm)*0.3));
+            b[j+1]=b[j];
+            renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{bucketIdx:bi,swapping:new Set([j+1]),sorted:sorted});
+            await sleepControlled(nm,Math.max(6,delay(nm)*0.3));
+            j--;
+          }
+          b[j+1]=key;
+          sorted.add(j+1);
+          renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{bucketIdx:bi,sorted:sorted});
+          await sleepControlled(nm,Math.max(6,delay(nm)*0.3));
+        }
+        setConcept('bucket','Bucket '+String.fromCharCode(65+(bi%26))+' is now sorted.');
+        renderBucketBoard('Bucket',buckets,bucketRanges,bcols,{bucketIdx:bi,sorted:new Set(Array.from({length:b.length},(_,idx)=>idx))});
+        await sleepControlled(nm,Math.max(8,delay(nm)*0.4));
+      }
     }
     let idx=0;
     setConcept('bucket','Gather step: concatenating buckets back into the main array in order.');
