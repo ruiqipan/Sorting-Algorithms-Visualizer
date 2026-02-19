@@ -521,7 +521,7 @@ const COUNTING_N=12, COUNTING_MIN=1, COUNTING_MAX=9;
 // Make radix sort readable as boxed numbers.
 const RADIX_N=20;
 // Keep bogo safe: small n + hard attempt cap.
-const BOGO_N=12, BOGO_MAX_ATTEMPTS=5000;
+const BOGO_N=12, BOGO_MAX_ATTEMPTS=1500;
 function gen(n){const a=[];for(let i=0;i<n;i++)a.push(Math.floor(Math.random()*180)+20);return a}
 function genCounting(n){const a=[];for(let i=0;i<n;i++)a.push(Math.floor(Math.random()*(COUNTING_MAX-COUNTING_MIN+1))+COUNTING_MIN);return a}
 function inv(a){let c=0;for(let i=0;i<a.length;i++)for(let j=i+1;j<a.length;j++)if(a[i]>a[j])c++;return c}
