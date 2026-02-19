@@ -224,6 +224,27 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .radix-bucket-label { font-family: var(--font-display); font-size: 12px; font-weight: 800; color: var(--text-muted); text-align: center; padding-top: 2px; }
 .radix-bucket-items { display: flex; flex-wrap: wrap; gap: 8px; min-height: 34px; align-items: flex-start; }
 
+/* Heap: array on top (single line), tree below (circles + lines) */
+.heap-stage { background: var(--surface2); border-radius: 10px; padding: 12px; border: 1px solid var(--border); }
+.heap-array-wrap { margin-bottom: 16px; }
+.heap-tree-wrap { }
+.heap-view-label { font-family: var(--font-display); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 8px; }
+.heap-array { display: flex; flex-wrap: nowrap; gap: 3px; padding: 8px 10px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); min-height: 44px; align-items: center; overflow-x: auto; }
+.heap-array-cell { font-family: var(--font-mono); font-size: 11px; padding: 4px 6px; border-radius: 4px; background: var(--surface2); border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; gap: 0; flex-shrink: 0; min-width: 28px; transition: background 0.1s, border-color 0.1s, box-shadow 0.1s; }
+.heap-array-cell .heap-cell-idx { font-size: 9px; color: var(--text-muted); }
+.heap-array-cell .heap-cell-val { font-weight: 700; color: var(--text); }
+.heap-array-cell.comparing { background: rgba(234,179,8,0.15); border-color: #eab308; box-shadow: 0 0 0 2px rgba(234,179,8,0.25); }
+.heap-array-cell.swapping { background: rgba(220,38,38,0.1); border-color: #dc2626; box-shadow: 0 0 0 2px rgba(220,38,38,0.2); }
+.heap-array-cell.sorted { background: rgba(22,163,74,0.12); border-color: rgba(22,163,74,0.4); }
+.heap-tree { position: relative; width: 100%; height: 320px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); overflow: visible; }
+.heap-tree svg { display: block; width: 100%; height: 100%; }
+.heap-tree .heap-edge { stroke: var(--border); stroke-width: 1.5; fill: none; }
+.heap-tree .heap-node-circle { fill: var(--surface2); stroke: var(--border); stroke-width: 1.5; transition: fill 0.1s, stroke 0.1s; }
+.heap-tree .heap-node-circle.comparing { fill: rgba(234,179,8,0.2); stroke: #eab308; }
+.heap-tree .heap-node-circle.swapping { fill: rgba(220,38,38,0.15); stroke: #dc2626; }
+.heap-tree .heap-node-circle.sorted { fill: rgba(22,163,74,0.15); stroke: rgba(22,163,74,0.5); }
+.heap-tree .heap-node-text { font-family: var(--font-mono); font-size: 11px; font-weight: 700; fill: var(--text); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+
 .comparison-table-wrapper { overflow-x: auto; margin-top: 10px; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
 .comparison-table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 800px; }
 .comparison-table th { font-family: var(--font-display); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); padding: 12px 14px; text-align: left; background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; }
