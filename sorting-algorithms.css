@@ -114,14 +114,14 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .case-control select { font-family: var(--font-display); font-size: 12px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
 
 .bar-chart { display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 180px; background: var(--surface2); border-radius: 10px; padding: 12px 8px 26px; border: 1px solid var(--border); overflow: visible; }
-.bar { flex: 1; max-width: 28px; border-radius: 3px 3px 0 0; transition: height 0.06s, background 0.06s, transform 0.12s; background: var(--accent-light); min-width: 3px; }
+.bar { flex: 1; max-width: 36px; border-radius: 3px 3px 0 0; transition: height 0.06s, background 0.06s, transform 0.12s; background: var(--accent-light); min-width: 3px; display: flex; align-items: flex-end; justify-content: center; }
 /* Show numeric labels on counting sort bars and highlight the active one. */
 #bars-counting.bar-chart { padding-left: 12px; padding-right: 12px; }
 #bars-counting .bar { display: flex; align-items: flex-end; justify-content: center; }
-.bar-label { display: block; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); padding-top: 2px; pointer-events: none; }
+.bar-label { display: block; font-family: var(--font-mono); font-size: 11px; color: #ffffff; padding-bottom: 2px; pointer-events: none; text-shadow: 0 1px 1px rgba(0,0,0,0.35); }
 .bar.comparing .bar-label,
-.bar.swapping .bar-label { color: #dc2626; font-weight: 600; }
-.bar.sorted .bar-label { color: var(--text); }
+.bar.swapping .bar-label { color: #ffffff; font-weight: 700; }
+.bar.sorted .bar-label { color: #ffffff; }
 .bar.down { transform: translateY(16px); }
 :root{
   --merge-left: #6366f1;
@@ -136,7 +136,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .merge-subarray-row { display: flex; align-items: center; gap: 10px; }
 .merge-subarray-row .merge-row-label { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); min-width: 72px; }
 .merge-subarray-row .merge-row-bars { display: flex; align-items: flex-end; gap: 2px; height: 56px; background: var(--surface2); border-radius: 8px; padding: 6px 8px; border: 1px solid var(--border); flex: 1; }
-.merge-subarray-row .merge-row-bars .bar { flex: 1; max-width: 20px; min-width: 2px; border-radius: 2px 2px 0 0; transition: height 0.06s, background 0.06s; }
+.merge-subarray-row .merge-row-bars .bar { flex: 1; max-width: 36px; min-width: 2px; border-radius: 2px 2px 0 0; transition: height 0.06s, background 0.06s; }
 .bar.comparing { background: #eab308 !important; }
 .bar.swapping { background: #dc2626 !important; }
 .bar.sorted { background: #16a34a !important; }

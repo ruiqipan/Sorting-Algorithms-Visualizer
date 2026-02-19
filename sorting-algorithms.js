@@ -316,11 +316,8 @@ function render(nm,hl={}){
   arr.forEach((v,i)=>{
     const b=document.createElement('div');b.className='bar';
     b.style.height=(v/mx*100)+'%';
-    // Attach a numeric label to each bar for all bar-chart algorithms
-    const lbl=document.createElement('span');
-    lbl.className='bar-label';
-    lbl.textContent=String(v);
-    b.appendChild(lbl);
+    // Save value for optional label rendering (shown only if bars are wide enough).
+    b.dataset.value=String(v);
     if(nm==='merge'&&mergeActiveRange&&i>=mergeActiveRange.l&&i<=mergeActiveRange.r)b.classList.add('down');
     if(hl.bg){
       const col=Array.isArray(hl.bg)?hl.bg[i]:hl.bg[i];
@@ -334,6 +331,27 @@ function render(nm,hl={}){
     else if(hl.cmp&&hl.cmp.has(i))b.classList.add('comparing');
     else if(hl.bc&&hl.bc[i])b.classList.add(hl.bc[i]);
     c.appendChild(b);
+  });
+  // Only show value labels when bars are wide enough for readability.
+  // Use requestAnimationFrame so measurements work on initial page load too.
+  requestAnimationFrame(()=>{
+    const firstBar=c.firstElementChild;
+    const LABEL_MIN_WIDTH_PX=22;
+    const barW=(firstBar instanceof HTMLElement)?firstBar.getBoundingClientRect().width:0;
+    for(const el of c.children){
+      if(!(el instanceof HTMLElement))continue;
+      // Remove any existing label first.
+      const existing=el.querySelector('.bar-label');
+      if(existing)existing.remove();
+      const v=el.dataset.value;
+      if(v==null)continue;
+      if(barW>=LABEL_MIN_WIDTH_PX){
+        const lbl=document.createElement('span');
+        lbl.className='bar-label';
+        lbl.textContent=v;
+        el.appendChild(lbl);
+      }
+    }
   });
 }
 
