@@ -24,11 +24,11 @@ function unlockBogo(){
 }
 
 // DEMO
-const D={},N=40;
+const D={},N=15;
 // Make counting sort visually straightforward (small n + small integer range).
-const COUNTING_N=12, COUNTING_MIN=1, COUNTING_MAX=9;
+const COUNTING_N=15, COUNTING_MIN=1, COUNTING_MAX=9;
 // Make radix sort readable as boxed numbers.
-const RADIX_N=20;
+const RADIX_N=15;
 // Keep bogo safe: small n + hard attempt cap.
 const BOGO_N=12, BOGO_MAX_ATTEMPTS=1500;
 function gen(n){const a=[];for(let i=0;i<n;i++)a.push(Math.floor(Math.random()*180)+20);return a}
@@ -52,8 +52,33 @@ function genRadix(n){
 }
 function inv(a){let c=0;for(let i=0;i<a.length;i++)for(let j=i+1;j<a.length;j++)if(a[i]>a[j])c++;return c}
 function $(id){return document.getElementById(id)}
-function setT(id,v){const e=$(id);if(e)e.textContent=v}
-function sizeFor(nm){if(nm==='counting')return COUNTING_N; if(nm==='radix')return RADIX_N; if(nm==='bogo')return BOGO_N; if(nm==='heap')return 31; return N}
+function setT(id,v){
+  const e=$(id);
+  if(!e)return;
+  if(e instanceof HTMLInputElement) e.value=String(v);
+  else e.textContent=v;
+}
+function getCustomN(nm,def){
+  const el=$('n-'+nm);
+  if(!(el instanceof HTMLInputElement)) return def;
+  const raw=parseInt(el.value,10);
+  if(!Number.isFinite(raw)) return def;
+  const min=el.min!==''?parseInt(el.min,10):undefined;
+  const max=el.max!==''?parseInt(el.max,10):undefined;
+  let v=raw;
+  if(Number.isFinite(min)) v=Math.max(min,v);
+  if(Number.isFinite(max)) v=Math.min(max,v);
+  if(v!==raw) el.value=String(v);
+  return v;
+}
+function sizeFor(nm){
+  if(nm==='bogo')return BOGO_N;
+  if(nm==='heap')return getCustomN('heap',15);
+  if(nm==='counting')return getCustomN('counting',COUNTING_N);
+  if(nm==='radix')return getCustomN('radix',RADIX_N);
+  if(nm==='bucket')return getCustomN('bucket',N);
+  return getCustomN(nm,N);
+}
 
 const conceptDefaults={
   insertion:'Press Run to watch insertion sort build the sorted prefix one key at a time.',
@@ -291,12 +316,11 @@ function render(nm,hl={}){
   arr.forEach((v,i)=>{
     const b=document.createElement('div');b.className='bar';
     b.style.height=(v/mx*100)+'%';
-    if(nm==='counting'){
-      const lbl=document.createElement('span');
-      lbl.className='bar-label';
-      lbl.textContent=String(v);
-      b.appendChild(lbl);
-    }
+    // Attach a numeric label to each bar for all bar-chart algorithms
+    const lbl=document.createElement('span');
+    lbl.className='bar-label';
+    lbl.textContent=String(v);
+    b.appendChild(lbl);
     if(nm==='merge'&&mergeActiveRange&&i>=mergeActiveRange.l&&i<=mergeActiveRange.r)b.classList.add('down');
     if(hl.bg){
       const col=Array.isArray(hl.bg)?hl.bg[i]:hl.bg[i];
