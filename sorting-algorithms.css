@@ -81,6 +81,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .block p strong { color: var(--accent); font-weight: 600; }
 
 .complexity-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 8px; }
+.complexity-grid-quick { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-top: 8px; }
 .complexity-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center; transition: transform 0.2s, box-shadow 0.2s; }
 .complexity-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .complexity-card .label { font-family: var(--font-display); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 8px; }
@@ -281,6 +282,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 
 @media (max-width: 700px) {
   .complexity-grid { grid-template-columns: 1fr 1fr; }
+  .complexity-grid-quick { grid-template-columns: 1fr 1fr; }
   .use-cases { grid-template-columns: 1fr; }
   .hero { padding: 44px 18px 36px; }
   .main { padding: 20px 14px 80px; }
@@ -288,6 +290,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 }
 @media (max-width: 480px) {
   .complexity-grid { grid-template-columns: 1fr; }
+  .complexity-grid-quick { grid-template-columns: 1fr; }
 }
 
 /* Bogo sort visual demo: wider bars (columns) like counting sort */
