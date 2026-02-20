@@ -974,11 +974,12 @@ function groupAlgorithmsByComplexity(){
       if(!groups[key])groups[key]={notation:key,algorithms:[]};
       groups[key].algorithms.push({name:algo.name,type,case:caseType});
     });
-    const spaceNotations=algo.space.includes('/')?algo.space.split('/').map(s=>s.trim()):[algo.space];
-    spaceNotations.forEach(notation=>{
+    const spaceParts=algo.space.includes('/')?algo.space.split('/').map(s=>s.trim()):[algo.space];
+    const spaceCases=algo.space.includes('/')?['typical','worst']:['space'];
+    spaceParts.forEach((notation,i)=>{
       const key=notation.trim();
       if(!groups[key])groups[key]={notation:key,algorithms:[]};
-      groups[key].algorithms.push({name:algo.name,type:'space',case:'space'});
+      groups[key].algorithms.push({name:algo.name,type:'space',case:spaceCases[i]||'space'});
     });
   });
   return groups;
@@ -1142,9 +1143,17 @@ function initComplexityChart(){
     }
     if(spaceAlgos.length>0){
       html+=`<div class="tooltip-section"><div class="tooltip-section-title">Space Complexity</div>`;
-      const spaceNames=[...new Set(spaceAlgos.map(a=>a.name))].sort();
-      spaceNames.forEach(name=>{
-        html+=`<div class="tooltip-case"><span class="tooltip-case-label algo">${name} Sort</span></div>`;
+      const spaceCaseLabel={typical:'Best / Avg',worst:'Worst',space:''};
+      const spaceByName={};
+      spaceAlgos.forEach(a=>{
+        if(!spaceByName[a.name])spaceByName[a.name]=[];
+        spaceByName[a.name].push(a.case);
+      });
+      Object.keys(spaceByName).sort().forEach(name=>{
+        const cases=spaceByName[name];
+        const labels=cases.map(c=>spaceCaseLabel[c]).filter(Boolean);
+        const suffix=labels.length>0?': '+labels.join(' / '):'';
+        html+=`<div class="tooltip-case"><span class="tooltip-case-label algo">${name} Sort</span>${suffix}</div>`;
       });
       html+=`</div>`;
     }
