@@ -1,6 +1,6 @@
 // NAV
 const navBtns=document.querySelectorAll('.nav-btn'), sections=document.querySelectorAll('.algo-section');
-function show(t){sections.forEach(s=>s.classList.remove('visible'));navBtns.forEach(b=>b.classList.remove('active'));const s=document.getElementById('sec-'+t);if(s)s.classList.add('visible');navBtns.forEach(b=>{if(b.dataset.target===t)b.classList.add('active')});window.scrollTo({top:0,behavior:'smooth'})}
+function show(t){sections.forEach(s=>s.classList.remove('visible'));navBtns.forEach(b=>b.classList.remove('active'));const s=document.getElementById('sec-'+t);if(s)s.classList.add('visible');navBtns.forEach(b=>{if(b.dataset.target===t)b.classList.add('active')});window.scrollTo({top:0,behavior:'smooth'});if(t==='compare'){setTimeout(()=>{const chartSvg=document.getElementById('complexity-chart-svg');if(chartSvg&&!chartSvg.querySelector('g'))initComplexityChart();},100);}}
 navBtns.forEach(b=>b.addEventListener('click',()=>show(b.dataset.target)));
 document.querySelectorAll('.overview-card').forEach(c=>c.addEventListener('click',()=>show(c.dataset.algo)));
 
@@ -929,10 +929,335 @@ async function go(nm){
   S.running=false;S.paused=false;updatePauseBtn(nm);
 }
 
+// COMPLEXITY CHART DATA
+const complexityData=[
+  {name:'Insertion',best:'O(n)',avg:'O(n²)',worst:'O(n²)',space:'O(1)'},
+  {name:'Selection',best:'O(n²)',avg:'O(n²)',worst:'O(n²)',space:'O(1)'},
+  {name:'Bubble',best:'O(n)',avg:'O(n²)',worst:'O(n²)',space:'O(1)'},
+  {name:'Merge',best:'O(n log n)',avg:'O(n log n)',worst:'O(n log n)',space:'O(n)'},
+  {name:'Quick',best:'O(n log n)',avg:'O(n log n)',worst:'O(n²)',space:'O(log n) / O(n)'},
+  {name:'Heap',best:'O(n log n)',avg:'O(n log n)',worst:'O(n log n)',space:'O(1)'},
+  {name:'Counting',best:'O(n+k)',avg:'O(n+k)',worst:'O(n+k)',space:'O(n+k)'},
+  {name:'Radix',best:'O(d(n+k))',avg:'O(d(n+k))',worst:'O(d(n+k))',space:'O(n+k)'},
+  {name:'Bucket',best:'O(n+k)',avg:'O(n+k)',worst:'O(n²)',space:'O(n+k)'}
+];
+
+// Big O notation to function mapping
+function bigOToFunction(notation){
+  const normalized=notation.trim();
+  if(normalized==='O(1)')return n=>1;
+  if(normalized==='O(log n)')return n=>Math.log2(Math.max(1,n));
+  if(normalized==='O(n)')return n=>n;
+  if(normalized==='O(n log n)')return n=>n*Math.log2(Math.max(1,n));
+  if(normalized==='O(n²)')return n=>n*n;
+  if(normalized==='O(n+k)')return n=>n+10; // Approximate k as constant
+  if(normalized==='O(d(n+k))')return n=>3*(n+10); // Approximate d=3, k=10
+  if(normalized.startsWith('O(log n)'))return n=>Math.log2(Math.max(1,n));
+  if(normalized.includes('/')){
+    const parts=normalized.split('/').map(s=>s.trim());
+    const func1=bigOToFunction(parts[0]);
+    const func2=bigOToFunction(parts[1]);
+    return n=>Math.max(func1(n),func2(n));
+  }
+  return n=>1;
+}
+
+// Group algorithms by complexity
+function groupAlgorithmsByComplexity(){
+  const groups={};
+  complexityData.forEach(algo=>{
+    const complexities=[
+      {type:'time',case:'best',notation:algo.best},
+      {type:'time',case:'avg',notation:algo.avg},
+      {type:'time',case:'worst',notation:algo.worst}
+    ];
+    complexities.forEach(({type,case:caseType,notation})=>{
+      const key=notation.trim();
+      if(!groups[key])groups[key]={notation:key,algorithms:[]};
+      groups[key].algorithms.push({name:algo.name,type,case:caseType});
+    });
+    const spaceNotations=algo.space.includes('/')?algo.space.split('/').map(s=>s.trim()):[algo.space];
+    spaceNotations.forEach(notation=>{
+      const key=notation.trim();
+      if(!groups[key])groups[key]={notation:key,algorithms:[]};
+      groups[key].algorithms.push({name:algo.name,type:'space',case:'space'});
+    });
+  });
+  return groups;
+}
+
+// Initialize complexity chart
+function initComplexityChart(){
+  const container=document.getElementById('complexity-chart-container');
+  if(!container)return;
+  const svg=document.getElementById('complexity-chart-svg');
+  if(!svg)return;
+  if(svg.querySelector('g'))return; // Already initialized
+  const tooltip=document.getElementById('complexity-chart-tooltip');
+  if(!tooltip)return;
+  const groups=groupAlgorithmsByComplexity();
+  const width=800,height=500;
+  const margin={top:40,right:40,bottom:60,left:70};
+  const chartWidth=width-margin.left-margin.right;
+  const chartHeight=height-margin.top-margin.bottom;
+  const nMin=1,nMax=100;
+  const nPoints=200;
+  const uniqueComplexities=Object.keys(groups).filter(k=>{
+    const func=bigOToFunction(k);
+    return func;
+  });
+  svg.setAttribute('width',width);
+  svg.setAttribute('height',height);
+  svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
+  const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.setAttribute('transform',`translate(${margin.left},${margin.top})`);
+  svg.appendChild(g);
+  const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+  svg.insertBefore(defs,svg.firstChild);
+  const gridPattern=document.createElementNS('http://www.w3.org/2000/svg','pattern');
+  gridPattern.setAttribute('id','grid');
+  gridPattern.setAttribute('width','40');
+  gridPattern.setAttribute('height','40');
+  gridPattern.setAttribute('patternUnits','userSpaceOnUse');
+  const gridPath=document.createElementNS('http://www.w3.org/2000/svg','path');
+  gridPath.setAttribute('d','M 40 0 L 0 0 0 40');
+  gridPath.setAttribute('fill','none');
+  gridPath.setAttribute('stroke','#d5d0c8');
+  gridPath.setAttribute('stroke-width','0.5');
+  gridPattern.appendChild(gridPath);
+  defs.appendChild(gridPattern);
+  const gridRect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+  gridRect.setAttribute('width',chartWidth);
+  gridRect.setAttribute('height',chartHeight);
+  gridRect.setAttribute('fill','url(#grid)');
+  g.appendChild(gridRect);
+  const xScale=n=>(n-nMin)/(nMax-nMin)*chartWidth;
+  const getMaxValue=()=>{
+    let max=0;
+    uniqueComplexities.forEach(notation=>{
+      const func=bigOToFunction(notation);
+      for(let n=nMin;n<=nMax;n++){
+        const val=func(n);
+        if(val>max)max=val;
+      }
+    });
+    return max;
+  };
+  const maxValue=getMaxValue();
+  const yScale=v=>chartHeight-(Math.log10(Math.max(1,v))/Math.log10(Math.max(1,maxValue)))*chartHeight;
+  const xAxis=document.createElementNS('http://www.w3.org/2000/svg','line');
+  xAxis.setAttribute('x1',0);
+  xAxis.setAttribute('y1',chartHeight);
+  xAxis.setAttribute('x2',chartWidth);
+  xAxis.setAttribute('y2',chartHeight);
+  xAxis.setAttribute('stroke','#1a1a1a');
+  xAxis.setAttribute('stroke-width','2');
+  g.appendChild(xAxis);
+  const yAxis=document.createElementNS('http://www.w3.org/2000/svg','line');
+  yAxis.setAttribute('x1',0);
+  yAxis.setAttribute('y1',0);
+  yAxis.setAttribute('x2',0);
+  yAxis.setAttribute('y2',chartHeight);
+  yAxis.setAttribute('stroke','#1a1a1a');
+  yAxis.setAttribute('stroke-width','2');
+  g.appendChild(yAxis);
+  for(let i=0;i<=10;i++){
+    const n=nMin+(nMax-nMin)*i/10;
+    const x=xScale(n);
+    const tick=document.createElementNS('http://www.w3.org/2000/svg','line');
+    tick.setAttribute('x1',x);
+    tick.setAttribute('y1',chartHeight);
+    tick.setAttribute('x2',x);
+    tick.setAttribute('y2',chartHeight+5);
+    tick.setAttribute('stroke','#1a1a1a');
+    tick.setAttribute('stroke-width','1.5');
+    g.appendChild(tick);
+    const label=document.createElementNS('http://www.w3.org/2000/svg','text');
+    label.setAttribute('x',x);
+    label.setAttribute('y',chartHeight+20);
+    label.setAttribute('text-anchor','middle');
+    label.setAttribute('font-family','JetBrains Mono, monospace');
+    label.setAttribute('font-size','11');
+    label.setAttribute('fill','#5c5c5c');
+    label.textContent=n;
+    g.appendChild(label);
+  }
+  const xLabel=document.createElementNS('http://www.w3.org/2000/svg','text');
+  xLabel.setAttribute('x',chartWidth/2);
+  xLabel.setAttribute('y',chartHeight+45);
+  xLabel.setAttribute('text-anchor','middle');
+  xLabel.setAttribute('font-family','Outfit, sans-serif');
+  xLabel.setAttribute('font-size','12');
+  xLabel.setAttribute('font-weight','600');
+  xLabel.setAttribute('fill','#1a1a1a');
+  xLabel.textContent='Input Size (n)';
+  g.appendChild(xLabel);
+  const yLabel=document.createElementNS('http://www.w3.org/2000/svg','text');
+  yLabel.setAttribute('x',-chartHeight/2);
+  yLabel.setAttribute('y',-45);
+  yLabel.setAttribute('text-anchor','middle');
+  yLabel.setAttribute('font-family','Outfit, sans-serif');
+  yLabel.setAttribute('font-size','12');
+  yLabel.setAttribute('font-weight','600');
+  yLabel.setAttribute('fill','#1a1a1a');
+  yLabel.setAttribute('transform','rotate(-90)');
+  yLabel.textContent='Operations (log scale)';
+  g.appendChild(yLabel);
+  const colors={
+    'O(1)':'#8a8a8a',
+    'O(log n)':'#6366f1',
+    'O(n)':'#16a34a',
+    'O(n log n)':'#b45309',
+    'O(n²)':'#dc2626',
+    'O(n+k)':'#0891b2',
+    'O(d(n+k))':'#be185d',
+    'O(log n) / O(n)':'#9333ea'
+  };
+  const curves=[];
+  uniqueComplexities.forEach((notation,idx)=>{
+    const func=bigOToFunction(notation);
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    let pathData='';
+    for(let i=0;i<=nPoints;i++){
+      const n=nMin+(nMax-nMin)*i/nPoints;
+      const val=func(n);
+      const x=xScale(n);
+      const y=yScale(val);
+      pathData+=(i===0?'M':'L')+` ${x} ${y}`;
+    }
+    path.setAttribute('d',pathData);
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke',colors[notation]||'#6366f1');
+    path.setAttribute('stroke-width','2.5');
+    path.setAttribute('opacity','0.8');
+    path.style.cursor='pointer';
+    path.setAttribute('data-complexity',notation);
+    g.appendChild(path);
+    curves.push({path,notation,func,algorithms:groups[notation].algorithms});
+  });
+  let hoveredCurve=null;
+  function updateTooltip(e,curve){
+    if(!curve){
+      tooltip.style.display='none';
+      return;
+    }
+    const rect=svg.getBoundingClientRect();
+    const svgPoint=svg.createSVGPoint();
+    svgPoint.x=e.clientX-rect.left;
+    svgPoint.y=e.clientY-rect.top;
+    const matrix=g.getScreenCTM().inverse();
+    const point=svgPoint.matrixTransform(matrix);
+    const timeAlgos=curve.algorithms.filter(a=>a.type==='time');
+    const spaceAlgos=curve.algorithms.filter(a=>a.type==='space');
+    let html=`<div class="tooltip-complexity">${curve.notation}</div>`;
+    if(timeAlgos.length>0){
+      html+=`<div class="tooltip-section"><div class="tooltip-section-title">Time Complexity</div>`;
+      ['best','avg','worst'].forEach(caseType=>{
+        const algos=timeAlgos.filter(a=>a.case===caseType);
+        if(algos.length>0){
+          html+=`<div class="tooltip-case"><span class="tooltip-case-label ${caseType}">${caseType.charAt(0).toUpperCase()+caseType.slice(1)}:</span> ${algos.map(a=>a.name).join(', ')}</div>`;
+        }
+      });
+      html+=`</div>`;
+    }
+    if(spaceAlgos.length>0){
+      html+=`<div class="tooltip-section"><div class="tooltip-section-title">Space Complexity</div>`;
+      spaceAlgos.forEach(algo=>{
+        html+=`<div class="tooltip-case"><span class="tooltip-case-label space">Space:</span> ${algo.name}</div>`;
+      });
+      html+=`</div>`;
+    }
+    tooltip.innerHTML=html;
+    tooltip.style.display='block';
+    tooltip.style.visibility='hidden';
+    const tooltipRect=tooltip.getBoundingClientRect();
+    let left=e.clientX+15;
+    let top=e.clientY+15;
+    if(left+tooltipRect.width>window.innerWidth-20)left=e.clientX-tooltipRect.width-15;
+    if(top+tooltipRect.height>window.innerHeight-20)top=e.clientY-tooltipRect.height-15;
+    if(left<20)left=20;
+    if(top<20)top=20;
+    tooltip.style.left=left+'px';
+    tooltip.style.top=top+'px';
+    tooltip.style.visibility='visible';
+  }
+  function findNearestCurve(x,y){
+    let nearest=null;
+    let minDist=Infinity;
+    curves.forEach(({path,notation,func,algorithms})=>{
+      const pathLength=path.getTotalLength();
+      let closestPoint=path.getPointAtLength(0);
+      let minPointDist=Math.hypot(x-closestPoint.x,y-closestPoint.y);
+      for(let i=0;i<=50;i++){
+        const point=path.getPointAtLength(pathLength*i/50);
+        const dist=Math.hypot(x-point.x,y-point.y);
+        if(dist<minPointDist){
+          minPointDist=dist;
+          closestPoint=point;
+        }
+      }
+      if(minPointDist<minDist&&minPointDist<20){
+        minDist=minPointDist;
+        nearest={path,notation,func,algorithms};
+      }
+    });
+    return nearest;
+  }
+  svg.addEventListener('mousemove',e=>{
+    const rect=svg.getBoundingClientRect();
+    const svgPoint=svg.createSVGPoint();
+    svgPoint.x=e.clientX-rect.left;
+    svgPoint.y=e.clientY-rect.top;
+    const matrix=g.getScreenCTM().inverse();
+    const point=svgPoint.matrixTransform(matrix);
+    if(point.x>=0&&point.x<=chartWidth&&point.y>=0&&point.y<=chartHeight){
+      const curve=findNearestCurve(point.x,point.y);
+      if(curve!==hoveredCurve){
+        hoveredCurve=curve;
+        curves.forEach(({path})=>{
+          path.setAttribute('stroke-width','2.5');
+          path.setAttribute('opacity','0.8');
+        });
+        if(curve){
+          curve.path.setAttribute('stroke-width','3.5');
+          curve.path.setAttribute('opacity','1');
+        }
+        updateTooltip(e,curve);
+      }else if(curve){
+        updateTooltip(e,curve);
+      }
+    }else{
+      if(hoveredCurve){
+        hoveredCurve=null;
+        curves.forEach(({path})=>{
+          path.setAttribute('stroke-width','2.5');
+          path.setAttribute('opacity','0.8');
+        });
+        tooltip.style.display='none';
+      }
+    }
+  });
+  svg.addEventListener('mouseleave',()=>{
+    hoveredCurve=null;
+    curves.forEach(({path})=>{
+      path.setAttribute('stroke-width','2.5');
+      path.setAttribute('opacity','0.8');
+    });
+    tooltip.style.display='none';
+  });
+}
+
 ['insertion','selection','bubble','merge','quick','heap','counting','radix','bucket','bogo'].forEach(initD);
 
 // Wire bogo unlock after DOM is ready (this script is at end of body).
 setBogoUnlocked(isBogoUnlocked());
 const unlockBtn=document.getElementById('bogo-unlock');
 if(unlockBtn)unlockBtn.addEventListener('click',unlockBogo);
+
+// Initialize complexity chart when DOM is ready
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',initComplexityChart);
+}else{
+  initComplexityChart();
+}
 
