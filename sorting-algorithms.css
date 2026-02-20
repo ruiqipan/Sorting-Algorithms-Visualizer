@@ -312,6 +312,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .tooltip-case-label.avg { color: var(--avg); }
 .tooltip-case-label.worst { color: var(--worst); }
 .tooltip-case-label.space { color: var(--cyan); }
+.tooltip-case-label.algo { color: var(--accent); }
 @media (max-width: 700px) {
   #complexity-chart-container { padding: 12px; }
   #complexity-chart-svg { width: 100%; height: auto; }

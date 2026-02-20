@@ -942,17 +942,15 @@ const complexityData=[
   {name:'Bucket',best:'O(n+k)',avg:'O(n+k)',worst:'O(n²)',space:'O(n+k)'}
 ];
 
-// Big O notation to function mapping
+// Big O notation to function mapping (exact growth for correct slopes)
 function bigOToFunction(notation){
   const normalized=notation.trim();
   if(normalized==='O(1)')return n=>1;
-  if(normalized==='O(log n)')return n=>Math.log2(Math.max(1,n));
+  if(normalized==='O(log n)')return n=>Math.log2(n+1);
   if(normalized==='O(n)')return n=>n;
-  if(normalized==='O(n log n)')return n=>n*Math.log2(Math.max(1,n));
+  if(normalized==='O(n log n)')return n=>0.5*n*Math.log2(n+1);
   if(normalized==='O(n²)')return n=>n*n;
-  if(normalized==='O(n+k)')return n=>n+10; // Approximate k as constant
-  if(normalized==='O(d(n+k))')return n=>3*(n+10); // Approximate d=3, k=10
-  if(normalized.startsWith('O(log n)'))return n=>Math.log2(Math.max(1,n));
+  if(normalized.startsWith('O(log n)'))return n=>Math.log2(n+1);
   if(normalized.includes('/')){
     const parts=normalized.split('/').map(s=>s.trim());
     const func1=bigOToFunction(parts[0]);
@@ -996,13 +994,15 @@ function initComplexityChart(){
   const tooltip=document.getElementById('complexity-chart-tooltip');
   if(!tooltip)return;
   const groups=groupAlgorithmsByComplexity();
-  const width=800,height=500;
-  const margin={top:40,right:40,bottom:60,left:70};
+  const width=920,height=500;
+  const margin={top:40,right:260,bottom:60,left:70};
   const chartWidth=width-margin.left-margin.right;
   const chartHeight=height-margin.top-margin.bottom;
-  const nMin=1,nMax=100;
+  const nMin=0,nMax=20;
   const nPoints=200;
+  const excludeFromChart=['O(n+k)','O(d(n+k))','O(2^n)','O(n!)'];
   const uniqueComplexities=Object.keys(groups).filter(k=>{
+    if(excludeFromChart.includes(k))return false;
     const func=bigOToFunction(k);
     return func;
   });
@@ -1012,39 +1012,10 @@ function initComplexityChart(){
   const g=document.createElementNS('http://www.w3.org/2000/svg','g');
   g.setAttribute('transform',`translate(${margin.left},${margin.top})`);
   svg.appendChild(g);
-  const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
-  svg.insertBefore(defs,svg.firstChild);
-  const gridPattern=document.createElementNS('http://www.w3.org/2000/svg','pattern');
-  gridPattern.setAttribute('id','grid');
-  gridPattern.setAttribute('width','40');
-  gridPattern.setAttribute('height','40');
-  gridPattern.setAttribute('patternUnits','userSpaceOnUse');
-  const gridPath=document.createElementNS('http://www.w3.org/2000/svg','path');
-  gridPath.setAttribute('d','M 40 0 L 0 0 0 40');
-  gridPath.setAttribute('fill','none');
-  gridPath.setAttribute('stroke','#d5d0c8');
-  gridPath.setAttribute('stroke-width','0.5');
-  gridPattern.appendChild(gridPath);
-  defs.appendChild(gridPattern);
-  const gridRect=document.createElementNS('http://www.w3.org/2000/svg','rect');
-  gridRect.setAttribute('width',chartWidth);
-  gridRect.setAttribute('height',chartHeight);
-  gridRect.setAttribute('fill','url(#grid)');
-  g.appendChild(gridRect);
+  // O(n) at 30°: slope = tan(30°) => maxValue = (nMax-nMin)*chartHeight/chartWidth * sqrt(3)
+  const maxValue=(nMax-nMin)*chartHeight/chartWidth*Math.sqrt(3);
   const xScale=n=>(n-nMin)/(nMax-nMin)*chartWidth;
-  const getMaxValue=()=>{
-    let max=0;
-    uniqueComplexities.forEach(notation=>{
-      const func=bigOToFunction(notation);
-      for(let n=nMin;n<=nMax;n++){
-        const val=func(n);
-        if(val>max)max=val;
-      }
-    });
-    return max;
-  };
-  const maxValue=getMaxValue();
-  const yScale=v=>chartHeight-(Math.log10(Math.max(1,v))/Math.log10(Math.max(1,maxValue)))*chartHeight;
+  const yScale=v=>chartHeight-(v/maxValue)*chartHeight;
   const xAxis=document.createElementNS('http://www.w3.org/2000/svg','line');
   xAxis.setAttribute('x1',0);
   xAxis.setAttribute('y1',chartHeight);
@@ -1061,36 +1032,15 @@ function initComplexityChart(){
   yAxis.setAttribute('stroke','#1a1a1a');
   yAxis.setAttribute('stroke-width','2');
   g.appendChild(yAxis);
-  for(let i=0;i<=10;i++){
-    const n=nMin+(nMax-nMin)*i/10;
-    const x=xScale(n);
-    const tick=document.createElementNS('http://www.w3.org/2000/svg','line');
-    tick.setAttribute('x1',x);
-    tick.setAttribute('y1',chartHeight);
-    tick.setAttribute('x2',x);
-    tick.setAttribute('y2',chartHeight+5);
-    tick.setAttribute('stroke','#1a1a1a');
-    tick.setAttribute('stroke-width','1.5');
-    g.appendChild(tick);
-    const label=document.createElementNS('http://www.w3.org/2000/svg','text');
-    label.setAttribute('x',x);
-    label.setAttribute('y',chartHeight+20);
-    label.setAttribute('text-anchor','middle');
-    label.setAttribute('font-family','JetBrains Mono, monospace');
-    label.setAttribute('font-size','11');
-    label.setAttribute('fill','#5c5c5c');
-    label.textContent=n;
-    g.appendChild(label);
-  }
   const xLabel=document.createElementNS('http://www.w3.org/2000/svg','text');
   xLabel.setAttribute('x',chartWidth/2);
-  xLabel.setAttribute('y',chartHeight+45);
+  xLabel.setAttribute('y',chartHeight+28);
   xLabel.setAttribute('text-anchor','middle');
   xLabel.setAttribute('font-family','Outfit, sans-serif');
   xLabel.setAttribute('font-size','12');
   xLabel.setAttribute('font-weight','600');
   xLabel.setAttribute('fill','#1a1a1a');
-  xLabel.textContent='Input Size (n)';
+  xLabel.textContent='Size of input data';
   g.appendChild(xLabel);
   const yLabel=document.createElementNS('http://www.w3.org/2000/svg','text');
   yLabel.setAttribute('x',-chartHeight/2);
@@ -1101,7 +1051,7 @@ function initComplexityChart(){
   yLabel.setAttribute('font-weight','600');
   yLabel.setAttribute('fill','#1a1a1a');
   yLabel.setAttribute('transform','rotate(-90)');
-  yLabel.textContent='Operations (log scale)';
+  yLabel.textContent='Time to complete (in operations)';
   g.appendChild(yLabel);
   const colors={
     'O(1)':'#8a8a8a',
@@ -1109,21 +1059,37 @@ function initComplexityChart(){
     'O(n)':'#16a34a',
     'O(n log n)':'#b45309',
     'O(n²)':'#dc2626',
-    'O(n+k)':'#0891b2',
-    'O(d(n+k))':'#be185d',
     'O(log n) / O(n)':'#9333ea'
+  };
+  const complexityNames={
+    'O(1)':'constant',
+    'O(log n)':'logarithmic',
+    'O(n)':'linear',
+    'O(n log n)':'linearithmic',
+    'O(n²)':'quadratic',
+    'O(log n) / O(n)':'log / linear'
   };
   const curves=[];
   uniqueComplexities.forEach((notation,idx)=>{
     const func=bigOToFunction(notation);
     const path=document.createElementNS('http://www.w3.org/2000/svg','path');
     let pathData='';
+    let xPrev=null,yPrev=null;
     for(let i=0;i<=nPoints;i++){
       const n=nMin+(nMax-nMin)*i/nPoints;
       const val=func(n);
       const x=xScale(n);
       const y=yScale(val);
+      if(y<0){
+        if(xPrev!=null&&yPrev!=null){
+          const t=(0-yPrev)/(y-yPrev);
+          const xCross=xPrev+t*(x-xPrev);
+          pathData+=` L ${xCross} 0`;
+        }
+        break;
+      }
       pathData+=(i===0?'M':'L')+` ${x} ${y}`;
+      xPrev=x;yPrev=y;
     }
     path.setAttribute('d',pathData);
     path.setAttribute('fill','none');
@@ -1133,6 +1099,20 @@ function initComplexityChart(){
     path.style.cursor='pointer';
     path.setAttribute('data-complexity',notation);
     g.appendChild(path);
+    const pathLen=path.getTotalLength();
+    const endPt=path.getPointAtLength(pathLen);
+    const labelGroup=document.createElementNS('http://www.w3.org/2000/svg','g');
+    labelGroup.setAttribute('transform',`translate(${endPt.x+8},${endPt.y})`);
+    const labelText=document.createElementNS('http://www.w3.org/2000/svg','text');
+    labelText.setAttribute('text-anchor','start');
+    labelText.setAttribute('dominant-baseline','middle');
+    labelText.setAttribute('font-family','JetBrains Mono, monospace');
+    labelText.setAttribute('font-size','11');
+    labelText.setAttribute('font-weight','600');
+    labelText.setAttribute('fill',colors[notation]||'#6366f1');
+    labelText.textContent=notation+(complexityNames[notation]?' · '+complexityNames[notation]:'');
+    labelGroup.appendChild(labelText);
+    g.appendChild(labelGroup);
     curves.push({path,notation,func,algorithms:groups[notation].algorithms});
   });
   let hoveredCurve=null;
@@ -1141,29 +1121,30 @@ function initComplexityChart(){
       tooltip.style.display='none';
       return;
     }
-    const rect=svg.getBoundingClientRect();
-    const svgPoint=svg.createSVGPoint();
-    svgPoint.x=e.clientX-rect.left;
-    svgPoint.y=e.clientY-rect.top;
-    const matrix=g.getScreenCTM().inverse();
-    const point=svgPoint.matrixTransform(matrix);
     const timeAlgos=curve.algorithms.filter(a=>a.type==='time');
     const spaceAlgos=curve.algorithms.filter(a=>a.type==='space');
     let html=`<div class="tooltip-complexity">${curve.notation}</div>`;
+    const caseLabel={best:'Best',avg:'Avg',worst:'Worst'};
+    const caseOrder={best:0,avg:1,worst:2};
     if(timeAlgos.length>0){
       html+=`<div class="tooltip-section"><div class="tooltip-section-title">Time Complexity</div>`;
-      ['best','avg','worst'].forEach(caseType=>{
-        const algos=timeAlgos.filter(a=>a.case===caseType);
-        if(algos.length>0){
-          html+=`<div class="tooltip-case"><span class="tooltip-case-label ${caseType}">${caseType.charAt(0).toUpperCase()+caseType.slice(1)}:</span> ${algos.map(a=>a.name).join(', ')}</div>`;
-        }
+      const byName={};
+      timeAlgos.forEach(a=>{
+        if(!byName[a.name])byName[a.name]=[];
+        byName[a.name].push(a.case);
+      });
+      Object.keys(byName).sort().forEach(name=>{
+        const cases=[...new Set(byName[name])].sort((a,b)=>(caseOrder[a]||0)-(caseOrder[b]||0));
+        const labels=cases.map(c=>caseLabel[c]||c);
+        html+=`<div class="tooltip-case"><span class="tooltip-case-label algo">${name} Sort:</span> ${labels.join(' / ')}</div>`;
       });
       html+=`</div>`;
     }
     if(spaceAlgos.length>0){
       html+=`<div class="tooltip-section"><div class="tooltip-section-title">Space Complexity</div>`;
-      spaceAlgos.forEach(algo=>{
-        html+=`<div class="tooltip-case"><span class="tooltip-case-label space">Space:</span> ${algo.name}</div>`;
+      const spaceNames=[...new Set(spaceAlgos.map(a=>a.name))].sort();
+      spaceNames.forEach(name=>{
+        html+=`<div class="tooltip-case"><span class="tooltip-case-label algo">${name} Sort</span></div>`;
       });
       html+=`</div>`;
     }
@@ -1203,13 +1184,16 @@ function initComplexityChart(){
     });
     return nearest;
   }
-  svg.addEventListener('mousemove',e=>{
-    const rect=svg.getBoundingClientRect();
-    const svgPoint=svg.createSVGPoint();
-    svgPoint.x=e.clientX-rect.left;
-    svgPoint.y=e.clientY-rect.top;
+  function screenToChart(e){
+    const pt=svg.createSVGPoint();
+    pt.x=e.clientX;
+    pt.y=e.clientY;
     const matrix=g.getScreenCTM().inverse();
-    const point=svgPoint.matrixTransform(matrix);
+    const p=pt.matrixTransform(matrix);
+    return {x:p.x,y:p.y};
+  }
+  svg.addEventListener('mousemove',e=>{
+    const point=screenToChart(e);
     if(point.x>=0&&point.x<=chartWidth&&point.y>=0&&point.y<=chartHeight){
       const curve=findNearestCurve(point.x,point.y);
       if(curve!==hoveredCurve){
