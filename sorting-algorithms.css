@@ -79,6 +79,16 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .block p { color: var(--text); margin-bottom: 12px; }
 .block p:last-child { margin-bottom: 0; }
 .block p strong { color: var(--accent); font-weight: 600; }
+.block code { font-family: var(--font-mono); font-size: 0.9em; background: var(--surface2); padding: 2px 7px; border-radius: 4px; color: var(--accent); border: 1px solid var(--border); }
+.block ul { margin: 12px 0; padding-left: 22px; color: var(--text); font-family: var(--font-body); }
+.block ul li { margin-bottom: 8px; line-height: 1.65; }
+.block ul li:last-child { margin-bottom: 0; }
+
+/* Master Theorem: same typography as rest of page, proper math in code */
+.master-theorem-block p { font-family: var(--font-body); font-size: 1rem; color: var(--text); }
+.master-theorem-block code { font-family: var(--font-mono); }
+.master-theorem-block code sup { font-size: 0.75em; vertical-align: super; line-height: 0; }
+.master-theorem-block code sub { font-size: 0.75em; vertical-align: sub; line-height: 0; }
 
 .complexity-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 8px; }
 .complexity-grid-quick { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-top: 8px; }
