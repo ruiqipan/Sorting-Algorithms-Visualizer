@@ -114,7 +114,7 @@ const conceptDefaults={
   bogo:'Press Run to watch bogo sort shuffle-and-hope (with a safety cap).'
 };
 
-function setConcept(algo,text){const el=$('concept-'+algo);if(el)el.textContent=text}
+function setConcept(algo,text){if(D[algo]?.recording){D[algo]._recConcept=text;return;}const el=$('concept-'+algo);if(el)el.textContent=text}
 
 function clearAuxPanels(nm){
   if(nm==='merge'){const e=$('merge-subarrays');if(e)e.innerHTML='';}
@@ -144,6 +144,7 @@ function setMergeLegend(leftCls,rightCls){
 }
 
 function renderMergePanel(left,right,merged,highlight){
+  if(D.merge?.recording){D.merge._recMergeState={left:[...(left||[])],right:[...(right||[])],merged:merged?[...merged]:null,highlight:{...(highlight||{})}};return;}
   const e=$('merge-subarrays');if(!e)return;
   e.innerHTML='';
   const wrap=arr=>Array.isArray(arr)?arr:[];
@@ -194,6 +195,7 @@ function renderBucketLegend(k){
 }
 
 function renderBucketBoard(labelPrefix,buckets,ranges,colors,highlight){
+  if(D.bucket?.recording){D.bucket._recBucketState={buckets:(buckets||[]).map(b=>[...b]),ranges:[...(ranges||[])],colors:[...(colors||[])]};return;}
   const board=$('bucket-board')||$('digit-buckets');if(!board)return;
   board.innerHTML='';
   const k=buckets.length;
@@ -238,6 +240,7 @@ function renderCountRow(targetId,mn,mx,arr,activeIdx){
   }
 }
 function renderCountingAux(mn,mx,counts,positions,activeIdx){
+  if(D.counting?.recording){D.counting._recCountingState={mn,mx,counts:counts?[...counts]:null,positions:positions?[...positions]:null,activeIdx};return;}
   renderCountRow('counting-count',mn,mx,counts,activeIdx);
   renderCountRow('counting-pos',mn,mx,positions,activeIdx);
 }
@@ -324,7 +327,9 @@ function setMergeActive(rangeOrNull,r2){
   else mergeActiveRange=null;
 }
 
+function copyHl(hl){const r={};for(const[k,v]of Object.entries(hl||{})){r[k]=v instanceof Set?new Set(v):v;}return r;}
 function render(nm,hl={}){
+  if(D[nm]?.recording){D[nm]._recHl=copyHl(hl);return;}
   if(nm==='heap'){
     renderHeapView(nm,hl);
     return;
@@ -496,6 +501,7 @@ function radixAnimMs(nm){
   return Math.min(420,Math.max(90,Math.round(delay(nm)*0.75)));
 }
 async function moveElAnimated(nm,el,newParent,ms){
+  if(D[nm]?.recording){newParent.appendChild(el);return;}
   const first=el.getBoundingClientRect();
   newParent.appendChild(el);
   const last=el.getBoundingClientRect();
@@ -523,6 +529,7 @@ function delay(nm){
 function slp(ms){return new Promise(r=>setTimeout(r,ms))}
 
 async function sleepControlled(nm,ms){
+  if(D[nm]?.recording){const s=makeSnapshot(nm);if(s)D[nm].steps.push(s);return;}
   let remaining=Math.max(0,ms|0);
   while(remaining>0){
     const s=D[nm];
@@ -535,8 +542,9 @@ async function sleepControlled(nm,ms){
 }
 
 function reset(nm){
-  if(D[nm])D[nm].cancel=true;
-  D[nm]={arr:makeCaseArray(nm,getCase(nm)),running:false,cancel:false,paused:false};
+  if(D[nm]){D[nm].cancel=true;D[nm].stepping=false;D[nm].steps=null;D[nm].stepIdx=-1;D[nm].recording=false;}
+  if(nm==='radix'){const stage=$('radix-stage'),bars=$('bars-radix');if(stage)stage.style.display='';if(bars)bars.style.display='none';}
+  D[nm]={arr:makeCaseArray(nm,getCase(nm)),running:false,cancel:false,paused:false,stepping:false,steps:null,stepIdx:-1,recording:false};
   updatePauseBtn(nm);
   ['comps-','swaps-','x1-','x2-'].forEach(p=>{const e=$(p+nm);if(e)e.textContent='0'});
   setT('n-'+nm,D[nm].arr.length);
@@ -556,11 +564,116 @@ function reset(nm){
   if(conceptDefaults[nm])setConcept(nm,conceptDefaults[nm]);
   clearAuxPanels(nm);
   if(nm==='merge'){setMergeActive(null);setMergeLegend('#6366f1','#0891b2');}
+  updateStepUI(nm);
 }
 
-async function go(nm){
-  if(D[nm]&&D[nm].running){D[nm].cancel=true;return}
-  reset(nm);const S=D[nm];S.running=true;S.cancel=false;S.paused=false;updatePauseBtn(nm);
+// ── STEP MODE ────────────────────────────────────────────────────────────────
+function makeSnapshot(nm){
+  const S=D[nm];if(!S)return null;
+  const snap={
+    arr:[...S.arr],
+    hl:copyHl(S._recHl||{}),
+    concept:S._recConcept||'',
+    stats:{
+      comps:$('comps-'+nm)?.textContent||'0',
+      swaps:$('swaps-'+nm)?.textContent||'0',
+      x1:$('x1-'+nm)?.textContent||'',
+      x2:$('x2-'+nm)?.textContent||''
+    }
+  };
+  if(S._recCountingState){const c=S._recCountingState;snap.counting={mn:c.mn,mx:c.mx,counts:c.counts?[...c.counts]:null,positions:c.positions?[...c.positions]:null,activeIdx:c.activeIdx};}
+  if(S._recMergeState){const m=S._recMergeState;snap.merge={left:[...m.left],right:[...m.right],merged:m.merged?[...m.merged]:null,highlight:{...m.highlight}};}
+  if(S._recBucketState){const b=S._recBucketState;snap.bucket={buckets:b.buckets.map(bk=>[...bk]),ranges:[...b.ranges],colors:[...b.colors]};}
+  return snap;
+}
+function applyStep(nm,snap){
+  if(!snap||!D[nm])return;
+  D[nm].arr=[...snap.arr];
+  if(snap.stats){
+    setT('comps-'+nm,snap.stats.comps);setT('swaps-'+nm,snap.stats.swaps);
+    if(snap.stats.x1!=='')setT('x1-'+nm,snap.stats.x1);
+    if(snap.stats.x2!=='')setT('x2-'+nm,snap.stats.x2);
+  }
+  if(snap.concept!=null)setConcept(nm,snap.concept);
+  // Radix: switch to bar-chart view in step mode
+  if(nm==='radix'){const stage=$('radix-stage'),bars=$('bars-radix');if(stage)stage.style.display='none';if(bars)bars.style.display='';}
+  render(nm,snap.hl||{});
+  // Aux panels
+  if(nm==='counting'){if(snap.counting)renderCountingAux(snap.counting.mn,snap.counting.mx,snap.counting.counts,snap.counting.positions,snap.counting.activeIdx);else clearAuxPanels('counting');}
+  if(nm==='merge'){if(snap.merge)renderMergePanel(snap.merge.left,snap.merge.right,snap.merge.merged,snap.merge.highlight);else clearAuxPanels('merge');}
+  if(nm==='bucket'){if(snap.bucket)renderBucketBoard('Bucket',snap.bucket.buckets,snap.bucket.ranges,snap.bucket.colors,{});else clearAuxPanels('bucket');}
+}
+async function recordSteps(nm){
+  if(!D[nm]||D[nm].recording)return;
+  const origArr=[...D[nm].arr];
+  D[nm].recording=true;D[nm].steps=[];
+  D[nm]._recHl={};D[nm]._recConcept=conceptDefaults[nm]||'';
+  D[nm]._recCountingState=null;D[nm]._recMergeState=null;D[nm]._recBucketState=null;
+  // Also reset aux state for counting so initial snapshot is clean
+  if(nm==='counting'){const mn=Math.min(...origArr),mx=Math.max(...origArr);D[nm]._recCountingState={mn,mx,counts:new Array(mx-mn+1).fill(0),positions:null,activeIdx:null};}
+  D[nm].steps.push(makeSnapshot(nm));
+  D[nm]._recCountingState=null; // clear so initial snap shows empty aux
+  D[nm].steps[0].counting=undefined; // first step: no aux
+  await go(nm,true);
+  // Push final sorted snapshot
+  D[nm]._recHl={sorted:new Set(Array.from({length:D[nm].arr.length},(_,i)=>i))};
+  D[nm]._recConcept=nm==='bogo'?D[nm]._recConcept:'Done! Fully sorted.';
+  D[nm].steps.push(makeSnapshot(nm));
+  D[nm].recording=false;
+  D[nm].arr=[...origArr];
+  D[nm].stepIdx=0;D[nm].stepping=true;
+}
+async function enterStepMode(nm){
+  if(!D[nm])return;
+  if(D[nm].running){
+    const savedArr=D[nm].origArr?[...D[nm].origArr]:null;
+    D[nm].cancel=true;await slp(80);
+    if(savedArr)D[nm].arr=savedArr;
+  }
+  if(!D[nm].steps){await recordSteps(nm);}
+  else{D[nm].stepping=true;}
+}
+function updateStepUI(nm){
+  const S=D[nm];
+  const inStep=S?.stepping||false;
+  const idx=S?.stepIdx??0;
+  const total=S?.steps?.length??0;
+  const ctr=$('step-counter-'+nm);if(ctr)ctr.textContent=inStep?(idx+1)+' / '+total:'';
+  const back=$('step-back-'+nm),fwd=$('step-fwd-'+nm),start=$('step-start-'+nm),end=$('step-end-'+nm);
+  if(back)back.disabled=!inStep||idx===0;
+  if(fwd)fwd.disabled=inStep&&idx===total-1;
+  if(start)start.disabled=!inStep||idx===0;
+  if(end)end.disabled=inStep&&idx===total-1;
+}
+async function stepForward(nm){
+  if(D[nm]?.running&&!D[nm]?.paused)return;
+  if(!D[nm]?.stepping){await enterStepMode(nm);}
+  if(!D[nm]?.stepping)return;
+  if(D[nm].stepIdx<D[nm].steps.length-1){D[nm].stepIdx++;applyStep(nm,D[nm].steps[D[nm].stepIdx]);}
+  updateStepUI(nm);
+}
+async function stepBack(nm){
+  if(D[nm]?.running&&!D[nm]?.paused)return;
+  if(!D[nm]?.stepping){await enterStepMode(nm);updateStepUI(nm);return;}
+  if(D[nm].stepIdx>0){D[nm].stepIdx--;applyStep(nm,D[nm].steps[D[nm].stepIdx]);}
+  updateStepUI(nm);
+}
+async function skipToEnd(nm){
+  if(D[nm]?.running&&!D[nm]?.paused)return;
+  if(!D[nm]?.stepping){await enterStepMode(nm);}
+  if(!D[nm]?.stepping)return;
+  D[nm].stepIdx=D[nm].steps.length-1;applyStep(nm,D[nm].steps[D[nm].stepIdx]);updateStepUI(nm);
+}
+async function skipToStart(nm){
+  if(D[nm]?.running&&!D[nm]?.paused)return;
+  if(D[nm]?.stepping&&D[nm].steps){D[nm].stepIdx=0;applyStep(nm,D[nm].steps[0]);updateStepUI(nm);}
+  else{if(D[nm]?.running){D[nm].cancel=true;await slp(80);}reset(nm);}
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function go(nm,_skipReset=false){
+  if(!_skipReset){if(D[nm]&&D[nm].running){D[nm].cancel=true;return}reset(nm);}
+  const S=D[nm];S.running=true;S.cancel=false;S.paused=false;if(!_skipReset){S.origArr=[...S.arr];updatePauseBtn(nm);}
   const arr=S.arr,n=arr.length,X=()=>S.cancel;
   let comps=0,swaps=0;
 
@@ -700,17 +813,17 @@ async function go(nm){
       // mode==='last' keeps ri=hi for degenerate pivot
       [arr[ri],arr[hi]]=[arr[hi],arr[ri]];
       const pv=arr[hi];let i2=lo-1;
-      if(mode==='middle')setConcept('quick','Best-case: using middle-element pivot on sorted input to keep partitions balanced. Green bars are fixed (sorted) pivots/singletons.');
-      else if(mode==='last')setConcept('quick','Worst-case: using last-element pivot on sorted input (degenerate partitions). Green bars are fixed (sorted) pivots/singletons.');
-      else setConcept('quick','Average-case: randomized pivots on random input. Green bars are fixed (sorted) pivots/singletons.');
+      setConcept('quick','Partition ['+lo+'..'+hi+']: pivot = '+pv+' (index '+hi+'). Scanning left-to-right; elements ≤ pivot swap into left partition.');
       for(let j=lo;j<hi&&!X();j++){
         comps++;setT('comps-quick',comps);
+        setConcept('quick','Partition ['+lo+'..'+hi+'] pivot='+pv+': compare A['+j+']='+arr[j]+' — '+(arr[j]<=pv?arr[j]+' ≤ '+pv+', swap into left partition.':arr[j]+' > '+pv+', stays in right partition.'));
         render(nm,{cmp:new Set([j]),pivot:hi,sorted:fixed});
         await sleepControlled(nm,delay(nm));
         if(arr[j]<=pv){
           i2++;
           [arr[i2],arr[j]]=[arr[j],arr[i2]];
           swaps++;setT('swaps-quick',swaps);
+          setConcept('quick','Swapped A['+(i2)+']='+arr[i2]+' ↔ A['+j+']='+arr[j]+'. Left-partition boundary now at index '+i2+'.');
           render(nm,{sw:new Set([i2,j]),pivot:hi,sorted:fixed});
           await sleepControlled(nm,delay(nm));
         }
@@ -718,7 +831,7 @@ async function go(nm){
       [arr[i2+1],arr[hi]]=[arr[hi],arr[i2+1]];swaps++;setT('swaps-quick',swaps);parts++;setT('x1-quick',parts);
       fixed.add(i2+1);
       render(nm,{sw:new Set([i2+1,hi]),sorted:fixed});await sleepControlled(nm,delay(nm));
-      setConcept('quick','Pivot fixed at index '+(i2+1)+'; recurse on ['+lo+'..'+i2+'] and ['+(i2+2)+'..'+hi+'].');
+      setConcept('quick','Pivot '+pv+' placed at index '+(i2+1)+'. Left ['+lo+'..'+(i2>=lo?i2:'∅')+'], right ['+((i2+2)<=hi?(i2+2):'∅')+'..'+hi+']. Recursing.');
       await qs(lo,i2,d+1);await qs(i2+2,hi,d+1);
     }
     await qs(0,n-1,0);
@@ -731,22 +844,25 @@ async function go(nm){
       let lg=i,l=2*i+1,r=2*i+2;
       if(l<sz){
         comps++;setT('comps-heap',comps);
+        setConcept('heap','Sift-down ['+i+']: compare parent A['+i+']='+arr[i]+' with left child A['+l+']='+arr[l]+'.'+(arr[l]>arr[i]?' Left child is larger.':' Parent is larger or equal.'));
         render(nm,{cmp:new Set([i,l]),sorted:s2});await sleepControlled(nm,delay(nm));
         if(arr[l]>arr[lg])lg=l;
       }
       if(r<sz){
         comps++;setT('comps-heap',comps);
-        render(nm,{cmp:new Set([i,r]),sorted:s2});await sleepControlled(nm,delay(nm));
+        setConcept('heap','Sift-down ['+i+']: compare '+(lg===l?'left child A['+l+']='+arr[l]:'parent A['+i+']='+arr[i])+' with right child A['+r+']='+arr[r]+'.'+(arr[r]>arr[lg]?' Right child is largest so far.':' Not the largest.'));
+        render(nm,{cmp:new Set([lg,r]),sorted:s2});await sleepControlled(nm,delay(nm));
         if(arr[r]>arr[lg])lg=r;
       }
       if(lg!==i&&!X()){
+        setConcept('heap','Sift-down ['+i+']: A['+lg+']='+arr[lg]+' > A['+i+']='+arr[i]+'. Swapping to restore max-heap property; continue sifting at '+lg+'.');
         [arr[i],arr[lg]]=[arr[lg],arr[i]];swaps++;setT('swaps-heap',swaps);
         render(nm,{sw:new Set([i,lg]),sorted:s2});await sleepControlled(nm,delay(nm));
         await sd(sz,lg);
-      }
+      } else if(!X()){setConcept('heap','Sift-down ['+i+']: A['+i+']='+arr[i]+' is the largest among its children. Heap property satisfied here.');}
     }
-    for(let i=(n>>1)-1;i>=0&&!X();i--){setConcept('heap','Building max-heap: sift-down at index '+i+' (compare parent with children, swap if a child is larger).');await sd(n,i);}
-    for(let i=n-1;i>0&&!X();i--){setConcept('heap','Extract max: swap root with last heap element (index '+i+'); the max is now in place. Sift-down the new root.');[arr[0],arr[i]]=[arr[i],arr[0]];swaps++;extr++;setT('swaps-heap',swaps);setT('x1-heap',extr);const s2=s2ForSz(i);render(nm,{sw:new Set([0,i]),sorted:s2});await sleepControlled(nm,delay(nm));await sd(i,0)}
+    for(let i=(n>>1)-1;i>=0&&!X();i--){setConcept('heap','Building max-heap: sift-down at index '+i+' (value '+arr[i]+').');await sd(n,i);}
+    for(let i=n-1;i>0&&!X();i--){setConcept('heap','Extract max: swap root A[0]='+arr[0]+' with A['+i+']='+arr[i]+'. Max is now placed at end. Sift-down new root.');[arr[0],arr[i]]=[arr[i],arr[0]];swaps++;extr++;setT('swaps-heap',swaps);setT('x1-heap',extr);const s2=s2ForSz(i);render(nm,{sw:new Set([0,i]),sorted:s2});await sleepControlled(nm,delay(nm));await sd(i,0)}
   }
   else if(nm==='counting'){
     const mn=Math.min(...arr),mx=Math.max(...arr),k=mx-mn+1;setT('x1-counting',k);
@@ -756,25 +872,30 @@ async function go(nm){
     for(let i=0;i<n&&!X();i++){
       const idx=arr[i]-mn;
       counts[idx]++;reads++;setT('comps-counting',reads);
+      setConcept('counting','Count step ['+i+'/'+(n-1)+']: A['+i+']='+arr[i]+' → count['+arr[i]+'] now '+counts[idx]+'.');
       render(nm,{cmp:new Set([i])});
       renderCountingAux(mn,mx,counts,null,idx);
       await sleepControlled(nm,delay(nm));
     }
-    setConcept('counting','Prefix sum step: building positions[] (end positions) from the counts.');
+    setConcept('counting','Prefix sum step: each positions[v] = cumulative count up to v — the end index where v’s last copy belongs.');
     const positions=counts.slice();
     const step=Math.max(1,Math.ceil(k/40));
     for(let i=1;i<k&&!X();i++){
       positions[i]+=positions[i-1];
-      if(i%step===0||i===k-1){renderCountingAux(mn,mx,counts,positions,i);await sleepControlled(nm,delay(nm));}
+      if(i%step===0||i===k-1){
+        setConcept('counting','Prefix sum: positions['+(mn+i)+']='+positions[i]+' (cumulative count through value '+(mn+i)+').');
+        renderCountingAux(mn,mx,counts,positions,i);await sleepControlled(nm,delay(nm));
+      }
     }
     const out=new Array(n);
-    setConcept('counting','Stable placement step: scan right-to-left; use positions[val] as the next free slot (decrement then place).');
+    setConcept('counting','Stable placement: scan right-to-left so equal elements keep their original order. positions[v] gives the next free slot for v (decremented after each use).');
     for(let i=n-1;i>=0&&!X();i--){
       const v=arr[i],idx=v-mn;
       positions[idx]--;
       const pos=positions[idx];
       out[pos]=v;
       writes++;setT('swaps-counting',writes);
+      setConcept('counting','Placement ['+i+']: A['+i+']='+v+' → output['+pos+']. positions['+v+'] decremented to '+positions[idx]+'.');
       render(nm,{cmp:new Set([i])});
       renderCountingAux(mn,mx,counts,positions,idx);
       await sleepControlled(nm,Math.max(8,delay(nm)*0.85));
@@ -946,7 +1067,8 @@ async function go(nm){
   }
 
   if(!X() && nm!=='bogo')render(nm,{sorted:new Set(Array.from({length:n},(_,i)=>i))});
-  S.running=false;S.paused=false;updatePauseBtn(nm);
+  S.running=false;S.paused=false;
+  if(!_skipReset)updatePauseBtn(nm);
 }
 
 // COMPLEXITY CHART DATA

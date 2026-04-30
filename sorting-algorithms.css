@@ -135,6 +135,12 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 /* Dim n-input and case-select when custom array is active */
 .demo-controls input[type="number"]:disabled,
 .demo-controls select:disabled { opacity: 0.35; cursor: not-allowed; }
+/* Step controls */
+.step-controls { display: flex; align-items: center; gap: 3px; }
+.step-btn { font-family: var(--font-display); font-size: 13px; font-weight: 600; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; transition: all 0.15s; line-height: 1; }
+.step-btn:hover:not(:disabled) { background: var(--accent); color: white; border-color: var(--accent); }
+.step-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.step-counter { font-family: var(--font-mono); font-size: 12px; color: var(--accent); font-weight: 600; min-width: 52px; text-align: center; padding: 0 4px; }
 
 .bar-chart { display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 180px; background: var(--surface2); border-radius: 10px; padding: 12px 8px 26px; border: 1px solid var(--border); overflow: visible; }
 .bar { flex: 1; max-width: 36px; border-radius: 3px 3px 0 0; transition: height 0.06s, background 0.06s, transform 0.12s; background: var(--accent-light); min-width: 3px; display: flex; align-items: flex-end; justify-content: center; }
