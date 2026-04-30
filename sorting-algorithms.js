@@ -26,26 +26,26 @@ function unlockBogo(){
 // DEMO
 const D={},N=15;
 // Make counting sort visually straightforward (small n + small integer range).
-const COUNTING_N=15, COUNTING_MIN=1, COUNTING_MAX=9;
+const COUNTING_N=15;
 // Make radix sort readable as boxed numbers.
 const RADIX_N=15;
 // Keep bogo safe: small n + hard attempt cap.
 const BOGO_N=12, BOGO_MAX_ATTEMPTS=1500;
 function gen(n){const a=[];for(let i=0;i<n;i++)a.push(Math.floor(Math.random()*180)+20);return a}
-function genCounting(n){const a=[];for(let i=0;i<n;i++)a.push(Math.floor(Math.random()*(COUNTING_MAX-COUNTING_MIN+1))+COUNTING_MIN);return a}
-function genRadix(n){
+function genCounting(n,base=10){const lo=1,hi=Math.max(2,base);const a=[];for(let i=0;i<n;i++)a.push(Math.floor(Math.random()*(hi-lo+1))+lo);return a}
+function genRadix(n,base=10){
   const a=[];
-  for(let i=0;i<n;i++){
-    // Generate diverse numbers: mix of 2-digit (20-99) and 3-digit (100-999) numbers
-    // Ensure good distribution across hundreds digits (1-9)
-    if(Math.random()<0.4){
-      // 40% chance: 2-digit numbers (20-99)
-      a.push(Math.floor(Math.random()*80)+20);
-    }else{
-      // 60% chance: 3-digit numbers (100-999) with diverse hundreds digits
-      const hundreds=Math.floor(Math.random()*9)+1; // 1-9
-      const remainder=Math.floor(Math.random()*100); // 0-99
-      a.push(hundreds*100+remainder);
+  if(base===10){
+    for(let i=0;i<n;i++){
+      if(Math.random()<0.4){a.push(Math.floor(Math.random()*80)+20);}
+      else{const h=Math.floor(Math.random()*9)+1;a.push(h*100+Math.floor(Math.random()*100));}
+    }
+  }else{
+    // Generate 2–3 "digit" numbers in the given base (values in [base, base³-1])
+    const b2=base*base,b3=base*base*base;
+    for(let i=0;i<n;i++){
+      if(Math.random()<0.4)a.push(Math.floor(Math.random()*(b2-base))+base);
+      else a.push(Math.floor(Math.random()*(b3-b2))+b2);
     }
   }
   return a;
@@ -79,6 +79,27 @@ function sizeFor(nm){
   if(nm==='bucket')return getCustomN('bucket',N);
   return getCustomN(nm,N);
 }
+function getBase(nm){
+  const el=$('base-'+nm);
+  if(!(el instanceof HTMLInputElement))return 10;
+  const v=parseInt(el.value,10);
+  if(!Number.isFinite(v))return 10;
+  return Math.max(2,Math.min(36,v));
+}
+function getCustomArray(nm){
+  const el=$('custom-'+nm);
+  if(!el||!el.value.trim())return null;
+  const parsed=el.value.split(',').map(s=>parseInt(s.trim(),10)).filter(x=>Number.isFinite(x));
+  return parsed.length>=2?parsed:null;
+}
+function onCustomInput(nm){
+  const custom=getCustomArray(nm);
+  const nEl=$('n-'+nm);
+  const caseEl=$('case-'+nm);
+  if(nEl instanceof HTMLInputElement)nEl.disabled=!!custom;
+  if(caseEl instanceof HTMLSelectElement)caseEl.disabled=!!custom;
+  reset(nm);
+}
 
 const conceptDefaults={
   insertion:'Press Run to watch insertion sort build the sorted prefix one key at a time.',
@@ -104,8 +125,9 @@ function clearAuxPanels(nm){
     if(p)p.textContent='Positions (prefix sums) will appear here during the run.';
   }
   if(nm==='radix'){
-    ensureRadixBuckets();
-    for(let d=0;d<10;d++){const b=$('radix-bucket-'+d);if(b)b.innerHTML=''}
+    const rb=getBase('radix');
+    ensureRadixBuckets(rb);
+    for(let d=0;d<rb;d++){const b=$('radix-bucket-'+d);if(b)b.innerHTML=''}
   }
 }
 
@@ -222,7 +244,7 @@ function renderCountingAux(mn,mx,counts,positions,activeIdx){
 
 function getCase(nm){
   const el=$('case-'+nm);
-  return el ? el.value : 'avg';
+  return el ? el.value : 'random';
 }
 
 function updatePauseBtn(nm){
@@ -242,40 +264,36 @@ function togglePause(nm){
 }
 
 function makeCaseArray(nm,cs){
+  const custom=getCustomArray(nm);
+  if(custom)return custom;
   const size=sizeFor(nm);
-  const base=gen(size);
-  if(nm==='counting')return genCounting(size);
-  if(nm==='radix')return genRadix(size);
-  if(nm==='insertion' || nm==='bubble'){
-    if(cs==='best')return [...base].sort((a,b)=>a-b);
-    if(cs==='worst')return [...base].sort((a,b)=>b-a);
-    return base;
-  }
-  if(nm==='quick'){
-    if(cs==='best' || cs==='worst')return [...base].sort((a,b)=>a-b);
-    return base;
-  }
-  if(nm==='bucket'){
-    if(cs==='best'){
-      const min=20,max=199,out=[];
-      for(let i=0;i<size;i++){
-        const t=size===1?0:i/(size-1);
-        out.push(Math.round(min + (max-min)*t));
-      }
-      return out;
+  const rb=getBase(nm);
+  let arr;
+  if(nm==='counting')arr=genCounting(size,rb);
+  else if(nm==='radix')arr=genRadix(size,rb);
+  else arr=gen(size);
+  switch(cs){
+    case 'sorted-asc':return [...arr].sort((a,c)=>a-c);
+    case 'sorted-desc':return [...arr].sort((a,c)=>c-a);
+    case 'nearly-asc':{
+      const a=[...arr].sort((x,y)=>x-y);
+      const k=Math.max(1,Math.floor(Math.sqrt(size)));
+      for(let i=0;i<k;i++){const x=Math.floor(Math.random()*size),y=Math.floor(Math.random()*size);[a[x],a[y]]=[a[y],a[x]];}
+      return a;
     }
-    if(cs==='worst'){
-      // Force everything into the last bucket by keeping values in [171..199] with max=199 (mx=200).
-      const out=[];
-      for(let i=0;i<size;i++){
-        const t=size===1?0:i/(size-1);
-        out.push(Math.round(199 - 28*t));
-      }
-      return out;
+    case 'nearly-desc':{
+      const a=[...arr].sort((x,y)=>y-x);
+      const k=Math.max(1,Math.floor(Math.sqrt(size)));
+      for(let i=0;i<k;i++){const x=Math.floor(Math.random()*size),y=Math.floor(Math.random()*size);[a[x],a[y]]=[a[y],a[x]];}
+      return a;
     }
-    return base;
+    case 'duplicates':{
+      const range=Math.max(2,Math.floor(Math.sqrt(size)));
+      if(nm==='counting'){const hi=Math.min(range,rb);return Array.from({length:size},()=>Math.floor(Math.random()*hi)+1);}
+      return Array.from({length:size},()=>Math.floor(Math.random()*range)+20);
+    }
+    default:return arr;
   }
-  return base;
 }
 
 function initD(nm){
@@ -286,7 +304,7 @@ function initD(nm){
   setT('n-'+nm,D[nm].arr.length);
   if(nm==='insertion')setT('x1-insertion',inv(D[nm].arr));
   if(nm==='counting'){const a=D[nm].arr;setT('x1-counting',Math.max(...a)-Math.min(...a)+1)}
-  if(nm==='radix'){setT('x1-radix',Math.max(...D[nm].arr).toString().length);setT('x2-radix','–')}
+  if(nm==='radix'){const _rb=getBase('radix');const _mx=Math.max(...D[nm].arr);const _d=_mx>0?Math.ceil(Math.log(_mx+1)/Math.log(_rb)):1;setT('x1-radix',_d);setT('x2-radix','–')}
   if(nm==='bucket'){
     const k=Math.ceil(Math.sqrt(D[nm].arr.length));
     setT('x1-bucket',k);
@@ -435,39 +453,43 @@ function renderHeapView(nm,hl){
   treeEl.appendChild(svg);
 }
 
-function ensureRadixBuckets(){
+function ensureRadixBuckets(base=10){
   const bucketsEl=$('radix-buckets');if(!bucketsEl)return null;
-  if(bucketsEl.dataset.ready==='1')return bucketsEl;
+  if(bucketsEl.dataset.ready===String(base))return bucketsEl;
   bucketsEl.innerHTML='';
-  for(let d=0;d<10;d++){
+  for(let d=0;d<base;d++){
     const row=document.createElement('div');row.className='radix-bucket-row';row.dataset.digit=String(d);
-    const lab=document.createElement('div');lab.className='radix-bucket-label';lab.textContent=String(d);
+    const lab=document.createElement('div');lab.className='radix-bucket-label';lab.textContent=d.toString(base).toUpperCase();
     const items=document.createElement('div');items.className='radix-bucket-items';items.id='radix-bucket-'+d;
     row.appendChild(lab);row.appendChild(items);bucketsEl.appendChild(row);
   }
-  bucketsEl.dataset.ready='1';
+  bucketsEl.dataset.ready=String(base);
   return bucketsEl;
 }
-function padRadixNumber(v){
-  // Pad numbers less than 100 with leading zeros (e.g., 43 -> 043)
-  return v<100?String(v).padStart(3,'0'):String(v);
+function padRadixNumber(v,base=10){
+  const s=v.toString(base).toUpperCase();
+  const arr=D.radix?.arr;
+  if(arr&&arr.length>0){
+    const mx=Math.max(...arr);
+    if(mx>0){const maxLen=Math.ceil(Math.log(mx+1)/Math.log(base));return s.padStart(Math.max(maxLen,s.length),'0');}
+  }
+  return s;
 }
-function radixItemEl(v){
+function radixItemEl(v,base=10){
   const el=document.createElement('div');
   el.className='radix-item';
-  el.textContent=padRadixNumber(v);
+  el.textContent=padRadixNumber(v,base);
   el.dataset.value=String(v);
   return el;
 }
 function renderRadixBoard(){
   const arrayEl=$('radix-array');if(!arrayEl)return;
-  ensureRadixBuckets();
-  // Fill array from current state.
+  const base=getBase('radix');
+  ensureRadixBuckets(base);
   const arr=D.radix?.arr||[];
   arrayEl.innerHTML='';
-  for(const v of arr)arrayEl.appendChild(radixItemEl(v));
-  // Clear buckets.
-  for(let d=0;d<10;d++){const b=$('radix-bucket-'+d);if(b)b.innerHTML=''}
+  for(const v of arr)arrayEl.appendChild(radixItemEl(v,base));
+  for(let d=0;d<base;d++){const b=$('radix-bucket-'+d);if(b)b.innerHTML=''}
 }
 function radixAnimMs(nm){
   // delay(nm) is 3..950ms. Use a slightly snappier transform duration.
@@ -521,7 +543,7 @@ function reset(nm){
   if(nm==='insertion'){setT('x1-insertion',inv(D[nm].arr));setT('swaps-insertion','0')}
   if(nm==='bubble')setT('x1-bubble','0');
   if(nm==='counting'){const a=D[nm].arr;setT('x1-counting',Math.max(...a)-Math.min(...a)+1)}
-  if(nm==='radix'){setT('x1-radix',Math.max(...D[nm].arr).toString().length);setT('x2-radix','–')}
+  if(nm==='radix'){const _rb=getBase('radix');const _mx=Math.max(...D[nm].arr);const _d=_mx>0?Math.ceil(Math.log(_mx+1)/Math.log(_rb)):1;setT('x1-radix',_d);setT('x2-radix','–')}
   if(nm==='bucket'){
     const k=Math.ceil(Math.sqrt(D[nm].arr.length));
     setT('x1-bucket',k);
@@ -760,33 +782,32 @@ async function go(nm){
     for(let i=0;i<n&&!X();i++){arr[i]=out[i];writes++;setT('swaps-counting',writes);render(nm,{sorted:new Set(Array.from({length:i+1},(_,k)=>k))});await sleepControlled(nm,delay(nm))}
   }
   else if(nm==='radix'){
-    const mx=Math.max(...arr),d=mx.toString().length;setT('x1-radix',d);
-    ensureRadixBuckets();
+    const base=getBase('radix');
+    const mx=Math.max(...arr);
+    const d=mx>0?Math.ceil(Math.log(mx+1)/Math.log(base)):1;
+    setT('x1-radix',d);
+    ensureRadixBuckets(base);
     renderRadixBoard();
     const arrayEl=$('radix-array');
     if(!arrayEl){S.running=false;S.paused=false;updatePauseBtn(nm);return;}
     let writes=0;
     for(let dig=0;dig<d&&!X();dig++){
       setT('x2-radix',(dig+1)+'/'+d);
-      const exp=Math.pow(10,dig);
+      const exp=Math.pow(base,dig);
       const ms=radixAnimMs('radix');
-
-      setConcept('radix','Pass '+(dig+1)+'/'+d+': move each number into row 0–9 by its digit at 10^'+dig+' (LSD first).');
+      const baseLabel=base===10?'10':'base-'+base;
+      setConcept('radix','Pass '+(dig+1)+'/'+d+': move each number into its digit-'+baseLabel+' row (LSD first, pass '+dig+').');
       const items=[...arrayEl.children];
-      // Clear any previous digit highlighting before starting this pass.
       for(const el of items){
         const raw=el.dataset.value;
-        if(raw!=null){
-          const v=parseInt(raw,10);
-          el.textContent=padRadixNumber(v);
-        }
+        if(raw!=null){const v=parseInt(raw,10);el.textContent=padRadixNumber(v,base);}
       }
       for(let i=0;i<items.length&&!X();i++){
         const el=items[i];
         el.classList.add('active');
         const v=parseInt(el.dataset.value,10);
-        const vStr=padRadixNumber(v);
-        const digit=Math.floor(v/exp)%10;
+        const vStr=padRadixNumber(v,base);
+        const digit=Math.floor(v/exp)%base;
         const target=$('radix-bucket-'+digit);
         const highlightIndex=vStr.length-1-dig;
         if(highlightIndex>=0&&highlightIndex<vStr.length){
@@ -798,15 +819,15 @@ async function go(nm){
           }
           el.innerHTML=html;
         }
-        setConcept('radix','Reading '+v+' → digit '+digit+' at 10^'+dig+'; place into row '+digit+'.');
+        setConcept('radix','Reading '+v+' ('+v.toString(base).toUpperCase()+' in base '+base+') → digit '+digit.toString(base).toUpperCase()+' at position '+dig+'; place into row '+digit.toString(base).toUpperCase()+'.');
         if(target)await moveElAnimated(nm,el,target,ms);
         el.classList.remove('active');
         await sleepControlled(nm,Math.max(0,Math.round(delay('radix')*0.12)));
       }
 
-      setConcept('radix','Collect: scan rows 0→9 and place numbers back into the array (stable).');
+      setConcept('radix','Collect: scan rows 0→'+(base-1).toString(base).toUpperCase()+' and place numbers back into the array (stable).');
       let idx=0;
-      for(let b=0;b<10&&!X();b++){
+      for(let b=0;b<base&&!X();b++){
         const bucket=$('radix-bucket-'+b);
         if(!bucket)continue;
         while(bucket.firstChild&&!X()){
@@ -823,7 +844,6 @@ async function go(nm){
 
       await sleepControlled(nm,Math.min(280,Math.round(delay('radix')*0.9)));
     }
-    // Mark done
     for(const el of arrayEl.children)el.classList.add('sorted');
   }
   else if(nm==='bucket'){
