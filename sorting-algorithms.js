@@ -251,19 +251,24 @@ function getCase(nm){
 }
 
 function updatePauseBtn(nm){
-  const b=$('pause-'+nm);
-  if(!b)return;
-  const s=D[nm];
-  if(!s||!s.running){b.textContent='Pause';return;}
-  b.textContent = s.paused ? 'Resume' : 'Pause';
+  const b=$('pause-'+nm);if(!b)return;
+  const phase=D[nm]?.phase;
+  b.textContent=phase==='paused'?'Resume':'Pause';
+  b.disabled=phase!=='playing'&&phase!=='paused';
 }
 
 function togglePause(nm){
-  const s=D[nm];
-  if(!s||!s.running)return;
-  s.paused=!s.paused;
-  updatePauseBtn(nm);
-  if(s.paused) setConcept(nm,'Paused. Click Resume to continue.');
+  if(!D[nm])return;
+  const p=D[nm].phase;
+  if(p==='playing'){
+    D[nm].phase='paused';
+    setConcept(nm,'Paused. Use step buttons to navigate, or click Resume to continue.');
+    updatePauseBtn(nm);
+  }else if(p==='paused'){
+    D[nm].phase='playing';
+    updatePauseBtn(nm);
+    if(!D[nm].autoplayGen)autoplay(nm);
+  }
 }
 
 function makeCaseArray(nm,cs){
@@ -300,21 +305,16 @@ function makeCaseArray(nm,cs){
 }
 
 function initD(nm){
-  D[nm]={arr:makeCaseArray(nm,getCase(nm)),running:false,cancel:false,paused:false};
+  const arr=makeCaseArray(nm,getCase(nm));
+  D[nm]={arr,origArr:[...arr],phase:'idle',gen:0,steps:null,stepIdx:-1,recording:false,autoplayGen:null,_recHl:{},_recConcept:'',_recCountingState:null,_recMergeState:null,_recBucketState:null};
   updatePauseBtn(nm);
-  if(nm==='radix')renderRadixBoard();
-  else render(nm);
+  if(nm==='radix')renderRadixBoard();else render(nm);
   setT('n-'+nm,D[nm].arr.length);
   if(nm==='insertion')setT('x1-insertion',inv(D[nm].arr));
   if(nm==='counting'){const a=D[nm].arr;setT('x1-counting',Math.max(...a)-Math.min(...a)+1)}
   if(nm==='radix'){const _rb=getBase('radix');const _mx=Math.max(...D[nm].arr);const _d=_mx>0?Math.ceil(Math.log(_mx+1)/Math.log(_rb)):1;setT('x1-radix',_d);setT('x2-radix','–')}
-  if(nm==='bucket'){
-    const k=Math.ceil(Math.sqrt(D[nm].arr.length));
-    setT('x1-bucket',k);
-    setT('x2-bucket','–');
-    renderBucketLegend(k);
-  }
-  if(nm==='bogo'){setT('x1-bogo',BOGO_MAX_ATTEMPTS)}
+  if(nm==='bucket'){const k=Math.ceil(Math.sqrt(D[nm].arr.length));setT('x1-bucket',k);setT('x2-bucket','–');renderBucketLegend(k);}
+  if(nm==='bogo')setT('x1-bogo',BOGO_MAX_ATTEMPTS);
   if(conceptDefaults[nm])setConcept(nm,conceptDefaults[nm]);
   clearAuxPanels(nm);
   if(nm==='merge'){setMergeActive(null);setMergeLegend('#6366f1','#0891b2');}
@@ -330,45 +330,68 @@ function setMergeActive(rangeOrNull,r2){
 function copyHl(hl){const r={};for(const[k,v]of Object.entries(hl||{})){r[k]=v instanceof Set?new Set(v):v;}return r;}
 function render(nm,hl={}){
   if(D[nm]?.recording){D[nm]._recHl=copyHl(hl);return;}
-  if(nm==='heap'){
-    renderHeapView(nm,hl);
-    return;
-  }
+  if(nm==='heap'){renderHeapView(nm,hl);return;}
   const c=$('bars-'+nm);if(!c)return;
-  const arr=D[nm].arr,mx=Math.max(...arr);c.innerHTML='';
-
-  // Decide whether to show numeric labels based on n and device size.
+  const arr=D[nm].arr,n=arr.length,mx=Math.max(...arr,1);
   let isMobile=false;
-  try{
-    if(window.matchMedia&&window.matchMedia('(max-width: 640px)').matches)isMobile=true;
-    else if(window.innerWidth&&window.innerWidth<=640)isMobile=true;
-  }catch{}
-  const cutoff=isMobile?10:30;
-  const showLabels=arr.length<=cutoff;
-
-  arr.forEach((v,i)=>{
-    const b=document.createElement('div');b.className='bar';
-    b.style.height=(v/mx*100)+'%';
+  try{if(window.matchMedia&&window.matchMedia('(max-width:640px)').matches)isMobile=true;else if(window.innerWidth<=640)isMobile=true;}catch{}
+  const showLabels=arr.length<=(isMobile?10:30);
+  // Rebuild bar elements only when count changes; otherwise reuse for animation
+  if(c.children.length!==n){
+    c.innerHTML='';
+    for(let i=0;i<n;i++){const b=document.createElement('div');b.className='bar';c.appendChild(b);}
+  }
+  const bars=c.children;
+  // FLIP swap animation: record pre-update x positions before touching the DOM
+  let swapI=-1,swapJ=-1,swapDx=0;
+  if(hl.sw&&hl.sw.size===2){
+    const sw2=[...hl.sw].sort((a,b)=>a-b);
+    const si=sw2[0],sj=sw2[1];
+    if(si>=0&&sj<n&&bars[si]&&bars[sj]){
+      bars[si].style.transition='';bars[si].style.transform='';
+      bars[sj].style.transition='';bars[sj].style.transform='';
+      const ri=bars[si].getBoundingClientRect();
+      const rj=bars[sj].getBoundingClientRect();
+      swapDx=rj.left-ri.left;
+      if(Math.abs(swapDx)>1){swapI=si;swapJ=sj;}
+    }
+  }
+  for(let i=0;i<n;i++){
+    const b=bars[i];
+    if(i!==swapI&&i!==swapJ){b.style.transition='';b.style.transform='';}
+    b.style.height=(arr[i]/mx*100)+'%';
+    // Labels
     if(showLabels){
-      const lbl=document.createElement('span');
-      lbl.className='bar-label';
-      lbl.textContent=String(v);
-      b.appendChild(lbl);
-    }
-    if(nm==='merge'&&mergeActiveRange&&i>=mergeActiveRange.l&&i<=mergeActiveRange.r)b.classList.add('down');
-    if(hl.bg){
-      const col=Array.isArray(hl.bg)?hl.bg[i]:hl.bg[i];
-      if(col)b.style.background=col; else b.style.background='';
+      let lbl=b.querySelector('.bar-label');
+      if(!lbl){lbl=document.createElement('span');lbl.className='bar-label';b.appendChild(lbl);}
+      lbl.textContent=String(arr[i]);
     }else{
-      b.style.background='';
+      const lbl=b.querySelector('.bar-label');if(lbl)lbl.remove();
     }
+    // Background
+    if(hl.bg){const col=Array.isArray(hl.bg)?hl.bg[i]:null;b.style.background=col||'';}
+    else b.style.background='';
+    // State classes
+    b.className='bar';
+    if(nm==='merge'&&mergeActiveRange&&i>=mergeActiveRange.l&&i<=mergeActiveRange.r)b.classList.add('down');
     if(hl.sorted&&hl.sorted.has(i))b.classList.add('sorted');
     else if(hl.pivot===i)b.classList.add('pivot');
     else if(hl.sw&&hl.sw.has(i))b.classList.add('swapping');
     else if(hl.cmp&&hl.cmp.has(i))b.classList.add('comparing');
     else if(hl.bc&&hl.bc[i])b.classList.add(hl.bc[i]);
-    c.appendChild(b);
-  });
+  }
+  // Apply FLIP: bars appear to arrive from each other's positions and slide home
+  if(swapI>=0){
+    const bi=bars[swapI],bj=bars[swapJ];
+    bi.style.transition='none';bj.style.transition='none';
+    bi.style.transform=`translateX(${swapDx}px)`;
+    bj.style.transform=`translateX(${-swapDx}px)`;
+    bi.getBoundingClientRect();
+    bi.style.transition='transform 220ms cubic-bezier(0.2,0.85,0.2,1)';
+    bj.style.transition='transform 220ms cubic-bezier(0.2,0.85,0.2,1)';
+    bi.style.transform='';
+    bj.style.transform='';
+  }
 }
 
 function renderHeapView(nm,hl){
@@ -530,11 +553,13 @@ function slp(ms){return new Promise(r=>setTimeout(r,ms))}
 
 async function sleepControlled(nm,ms){
   if(D[nm]?.recording){const s=makeSnapshot(nm);if(s)D[nm].steps.push(s);return;}
+  const myGen=D[nm]?.gen??-1;
   let remaining=Math.max(0,ms|0);
   while(remaining>0){
     const s=D[nm];
-    if(!s||s.cancel) return;
-    while(s.paused && !s.cancel) await slp(60);
+    if(!s||s.gen!==myGen)return;
+    while(s.phase==='paused'&&s.gen===myGen)await slp(60);
+    if(!s||s.gen!==myGen)return;
     const chunk=Math.min(30,remaining);
     await slp(chunk);
     remaining-=chunk;
@@ -542,25 +567,20 @@ async function sleepControlled(nm,ms){
 }
 
 function reset(nm){
-  if(D[nm]){D[nm].cancel=true;D[nm].stepping=false;D[nm].steps=null;D[nm].stepIdx=-1;D[nm].recording=false;}
+  if(D[nm])D[nm].gen=(D[nm].gen||0)+1; // cancel any in-flight animation
   if(nm==='radix'){const stage=$('radix-stage'),bars=$('bars-radix');if(stage)stage.style.display='';if(bars)bars.style.display='none';}
-  D[nm]={arr:makeCaseArray(nm,getCase(nm)),running:false,cancel:false,paused:false,stepping:false,steps:null,stepIdx:-1,recording:false};
+  const arr=makeCaseArray(nm,getCase(nm));
+  D[nm]={arr,origArr:[...arr],phase:'idle',gen:D[nm]?.gen??0,steps:null,stepIdx:-1,recording:false,autoplayGen:null,_recHl:{},_recConcept:'',_recCountingState:null,_recMergeState:null,_recBucketState:null};
   updatePauseBtn(nm);
-  ['comps-','swaps-','x1-','x2-'].forEach(p=>{const e=$(p+nm);if(e)e.textContent='0'});
+  ['comps-','swaps-','x1-','x2-'].forEach(pfx=>{const e=$(pfx+nm);if(e)e.textContent='0'});
   setT('n-'+nm,D[nm].arr.length);
   if(nm==='insertion'){setT('x1-insertion',inv(D[nm].arr));setT('swaps-insertion','0')}
   if(nm==='bubble')setT('x1-bubble','0');
   if(nm==='counting'){const a=D[nm].arr;setT('x1-counting',Math.max(...a)-Math.min(...a)+1)}
   if(nm==='radix'){const _rb=getBase('radix');const _mx=Math.max(...D[nm].arr);const _d=_mx>0?Math.ceil(Math.log(_mx+1)/Math.log(_rb)):1;setT('x1-radix',_d);setT('x2-radix','–')}
-  if(nm==='bucket'){
-    const k=Math.ceil(Math.sqrt(D[nm].arr.length));
-    setT('x1-bucket',k);
-    setT('x2-bucket','–');
-    renderBucketLegend(k);
-  }
-  if(nm==='bogo'){setT('x1-bogo',BOGO_MAX_ATTEMPTS)}
-  if(nm==='radix')renderRadixBoard();
-  else render(nm);
+  if(nm==='bucket'){const k=Math.ceil(Math.sqrt(D[nm].arr.length));setT('x1-bucket',k);setT('x2-bucket','–');renderBucketLegend(k);}
+  if(nm==='bogo')setT('x1-bogo',BOGO_MAX_ATTEMPTS);
+  if(nm==='radix')renderRadixBoard();else render(nm);
   if(conceptDefaults[nm])setConcept(nm,conceptDefaults[nm]);
   clearAuxPanels(nm);
   if(nm==='merge'){setMergeActive(null);setMergeLegend('#6366f1','#0891b2');}
@@ -609,73 +629,145 @@ async function recordSteps(nm){
   D[nm].recording=true;D[nm].steps=[];
   D[nm]._recHl={};D[nm]._recConcept=conceptDefaults[nm]||'';
   D[nm]._recCountingState=null;D[nm]._recMergeState=null;D[nm]._recBucketState=null;
-  // Also reset aux state for counting so initial snapshot is clean
-  if(nm==='counting'){const mn=Math.min(...origArr),mx=Math.max(...origArr);D[nm]._recCountingState={mn,mx,counts:new Array(mx-mn+1).fill(0),positions:null,activeIdx:null};}
   D[nm].steps.push(makeSnapshot(nm));
-  D[nm]._recCountingState=null; // clear so initial snap shows empty aux
-  D[nm].steps[0].counting=undefined; // first step: no aux
+  D[nm].gen=(D[nm].gen||0)+1; // fresh gen so recording go() runs to completion
   await go(nm,true);
-  // Push final sorted snapshot
   D[nm]._recHl={sorted:new Set(Array.from({length:D[nm].arr.length},(_,i)=>i))};
   D[nm]._recConcept=nm==='bogo'?D[nm]._recConcept:'Done! Fully sorted.';
   D[nm].steps.push(makeSnapshot(nm));
   D[nm].recording=false;
   D[nm].arr=[...origArr];
-  D[nm].stepIdx=0;D[nm].stepping=true;
-}
-async function enterStepMode(nm){
-  if(!D[nm])return;
-  if(D[nm].running){
-    const savedArr=D[nm].origArr?[...D[nm].origArr]:null;
-    D[nm].cancel=true;await slp(80);
-    if(savedArr)D[nm].arr=savedArr;
-  }
-  if(!D[nm].steps){await recordSteps(nm);}
-  else{D[nm].stepping=true;}
+  D[nm].stepIdx=0;
 }
 function updateStepUI(nm){
   const S=D[nm];
-  const inStep=S?.stepping||false;
-  const idx=S?.stepIdx??0;
+  const hasSteps=!!(S?.steps);
+  const idx=S?.stepIdx??-1;
   const total=S?.steps?.length??0;
-  const ctr=$('step-counter-'+nm);if(ctr)ctr.textContent=inStep?(idx+1)+' / '+total:'';
-  const back=$('step-back-'+nm),fwd=$('step-fwd-'+nm),start=$('step-start-'+nm),end=$('step-end-'+nm);
-  if(back)back.disabled=!inStep||idx===0;
-  if(fwd)fwd.disabled=inStep&&idx===total-1;
-  if(start)start.disabled=!inStep||idx===0;
-  if(end)end.disabled=inStep&&idx===total-1;
+  const isPlaying=S?.phase==='playing';
+  const ctr=$('step-counter-'+nm);
+  if(ctr)ctr.textContent=(hasSteps&&idx>=0)?(idx+1)+' / '+total:'';
+  const back=$('step-back-'+nm),fwd=$('step-fwd-'+nm);
+  const start=$('step-start-'+nm),end=$('step-end-'+nm);
+  if(back)back.disabled=idx<=0;
+  if(fwd)fwd.disabled=hasSteps&&idx>=total-1&&!isPlaying;
+  if(start)start.disabled=idx<=0&&!hasSteps;
+  if(end)end.disabled=hasSteps&&idx>=total-1&&!isPlaying;
 }
 async function stepForward(nm){
-  if(D[nm]?.running&&!D[nm]?.paused)return;
-  if(!D[nm]?.stepping){await enterStepMode(nm);}
-  if(!D[nm]?.stepping)return;
-  if(D[nm].stepIdx<D[nm].steps.length-1){D[nm].stepIdx++;applyStep(nm,D[nm].steps[D[nm].stepIdx]);}
-  updateStepUI(nm);
+  const S=D[nm];if(!S)return;
+  if(S.phase==='playing'){S.phase='paused';updatePauseBtn(nm);await slp(60);}
+  if(!D[nm].steps){await recordSteps(nm);if(!D[nm].steps)return;}
+  const s=D[nm];
+  if(s.stepIdx<s.steps.length-1){
+    const ni=s.stepIdx<0?0:s.stepIdx+1;
+    s.stepIdx=ni;applyStep(nm,s.steps[ni]);
+  }
+  if(s.phase!=='playing')s.phase='paused';
+  updatePauseBtn(nm);updateStepUI(nm);
 }
 async function stepBack(nm){
-  if(D[nm]?.running&&!D[nm]?.paused)return;
-  if(!D[nm]?.stepping){await enterStepMode(nm);updateStepUI(nm);return;}
-  if(D[nm].stepIdx>0){D[nm].stepIdx--;applyStep(nm,D[nm].steps[D[nm].stepIdx]);}
-  updateStepUI(nm);
+  const S=D[nm];if(!S)return;
+  if(S.phase==='playing'){S.phase='paused';updatePauseBtn(nm);await slp(60);}
+  const s=D[nm];
+  if(!s.steps){updateStepUI(nm);return;}
+  if(s.stepIdx>0){s.stepIdx--;applyStep(nm,s.steps[s.stepIdx]);}
+  if(s.phase!=='playing')s.phase='paused';
+  updatePauseBtn(nm);updateStepUI(nm);
 }
 async function skipToEnd(nm){
-  if(D[nm]?.running&&!D[nm]?.paused)return;
-  if(!D[nm]?.stepping){await enterStepMode(nm);}
-  if(!D[nm]?.stepping)return;
-  D[nm].stepIdx=D[nm].steps.length-1;applyStep(nm,D[nm].steps[D[nm].stepIdx]);updateStepUI(nm);
+  const S=D[nm];if(!S)return;
+  if(S.phase==='playing'){S.phase='paused';updatePauseBtn(nm);await slp(60);}
+  if(!D[nm].steps){await recordSteps(nm);if(!D[nm].steps)return;}
+  const s=D[nm];
+  s.stepIdx=s.steps.length-1;applyStep(nm,s.steps[s.stepIdx]);
+  s.phase='paused';updatePauseBtn(nm);updateStepUI(nm);
 }
 async function skipToStart(nm){
-  if(D[nm]?.running&&!D[nm]?.paused)return;
-  if(D[nm]?.stepping&&D[nm].steps){D[nm].stepIdx=0;applyStep(nm,D[nm].steps[0]);updateStepUI(nm);}
-  else{if(D[nm]?.running){D[nm].cancel=true;await slp(80);}reset(nm);}
+  const S=D[nm];if(!S)return;
+  if(S.phase==='playing'){S.phase='paused';updatePauseBtn(nm);await slp(60);}
+  const s=D[nm];
+  if(s.steps){
+    s.stepIdx=0;applyStep(nm,s.steps[0]);
+    s.phase='paused';updatePauseBtn(nm);
+  }else{
+    reset(nm);
+  }
+  updateStepUI(nm);
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function go(nm,_skipReset=false){
-  if(!_skipReset){if(D[nm]&&D[nm].running){D[nm].cancel=true;return}reset(nm);}
-  const S=D[nm];S.running=true;S.cancel=false;S.paused=false;if(!_skipReset){S.origArr=[...S.arr];updatePauseBtn(nm);}
-  const arr=S.arr,n=arr.length,X=()=>S.cancel;
+async function autoplay(nm){
+  const s0=D[nm];if(!s0)return;
+  const myGen=s0.gen;
+  if(s0.autoplayGen===myGen)return; // already running for this gen
+  s0.autoplayGen=myGen;
+  try{
+    while(true){
+      const s=D[nm];
+      if(!s||s.gen!==myGen)break;
+      if(s.phase==='paused'){await slp(40);continue;}
+      if(s.phase!=='playing')break;
+      if(!s.steps||s.stepIdx>=s.steps.length-1){
+        s.phase='idle';updatePauseBtn(nm);updateStepUI(nm);break;
+      }
+      s.stepIdx++;
+      applyStep(nm,s.steps[s.stepIdx]);
+      updateStepUI(nm);
+      await slp(delay(nm));
+    }
+  }finally{
+    if(D[nm]&&D[nm].autoplayGen===myGen)D[nm].autoplayGen=null;
+  }
+}
+
+function _resetDisplay(nm,arr){
+  ['comps-','swaps-','x1-','x2-'].forEach(pfx=>{const e=$(pfx+nm);if(e)e.textContent='0'});
+  setT('n-'+nm,arr.length);
+  if(nm==='insertion'){setT('x1-insertion',inv(arr));setT('swaps-insertion','0')}
+  if(nm==='bubble')setT('x1-bubble','0');
+  if(nm==='counting')setT('x1-counting',Math.max(...arr)-Math.min(...arr)+1);
+  if(nm==='radix'){const _rb=getBase('radix');const _mx=Math.max(...arr);const _d=_mx>0?Math.ceil(Math.log(_mx+1)/Math.log(_rb)):1;setT('x1-radix',_d);setT('x2-radix','–');}
+  if(nm==='bucket'){const k=Math.ceil(Math.sqrt(arr.length));setT('x1-bucket',k);setT('x2-bucket','–');renderBucketLegend(k);}
+  if(nm==='bogo')setT('x1-bogo',BOGO_MAX_ATTEMPTS);
+  if(nm==='radix'){const stage=$('radix-stage'),bars=$('bars-radix');if(stage)stage.style.display='';if(bars)bars.style.display='none';renderRadixBoard();}else render(nm);
+  if(conceptDefaults[nm])setConcept(nm,conceptDefaults[nm]);
+  clearAuxPanels(nm);
+  if(nm==='merge'){setMergeActive(null);setMergeLegend('#6366f1','#0891b2');}
+}
+
+async function go(nm,_recording=false){
+  if(!_recording){
+    if(!D[nm])return;
+    const p=D[nm].phase;
+    if(p==='playing')return;
+    // Resume from current position (paused mid-animation or mid-stepping)
+    const atEnd=D[nm].steps&&D[nm].stepIdx>=D[nm].steps.length-1;
+    if(p==='paused'&&!atEnd){
+      D[nm].phase='playing';
+      updatePauseBtn(nm);
+      autoplay(nm);
+      return;
+    }
+    // Fresh start: generate new array, record all steps, play from beginning
+    const arr=makeCaseArray(nm,getCase(nm));
+    D[nm].gen=(D[nm].gen||0)+1;
+    D[nm].arr=arr;D[nm].origArr=[...arr];
+    D[nm].phase='idle';D[nm].steps=null;D[nm].stepIdx=-1;D[nm].recording=false;D[nm].autoplayGen=null;
+    updatePauseBtn(nm);
+    _resetDisplay(nm,arr);
+    updateStepUI(nm);
+    await recordSteps(nm);
+    if(!D[nm].steps)return;
+    D[nm].phase='playing';
+    updatePauseBtn(nm);
+    autoplay(nm);
+    return;
+  }
+  const myGen=D[nm].gen;
+  const S=D[nm];const arr=S.arr,n=arr.length,X=()=>!D[nm]||D[nm].gen!==myGen;
   let comps=0,swaps=0;
+
 
   if(nm==='insertion'){
     for(let i=1;i<n&&!X();i++){
@@ -813,17 +905,17 @@ async function go(nm,_skipReset=false){
       // mode==='last' keeps ri=hi for degenerate pivot
       [arr[ri],arr[hi]]=[arr[hi],arr[ri]];
       const pv=arr[hi];let i2=lo-1;
-      setConcept('quick','Partition ['+lo+'..'+hi+']: pivot = '+pv+' (index '+hi+'). Scanning left-to-right; elements ≤ pivot swap into left partition.');
+      setConcept('quick','Partition ['+lo+'..'+hi+']: pivot='+pv+' (index '+hi+'). Scanning left→right; elements ≤ pivot swap into left partition.');
       for(let j=lo;j<hi&&!X();j++){
         comps++;setT('comps-quick',comps);
-        setConcept('quick','Partition ['+lo+'..'+hi+'] pivot='+pv+': compare A['+j+']='+arr[j]+' — '+(arr[j]<=pv?arr[j]+' ≤ '+pv+', swap into left partition.':arr[j]+' > '+pv+', stays in right partition.'));
+        setConcept('quick','Partition ['+lo+'..'+hi+'] pivot='+pv+': A['+j+']='+arr[j]+' — '+(arr[j]<=pv?arr[j]+' ≤ '+pv+', swap into left.':arr[j]+' > '+pv+', stays in right.'));
         render(nm,{cmp:new Set([j]),pivot:hi,sorted:fixed});
         await sleepControlled(nm,delay(nm));
         if(arr[j]<=pv){
           i2++;
           [arr[i2],arr[j]]=[arr[j],arr[i2]];
           swaps++;setT('swaps-quick',swaps);
-          setConcept('quick','Swapped A['+(i2)+']='+arr[i2]+' ↔ A['+j+']='+arr[j]+'. Left-partition boundary now at index '+i2+'.');
+          setConcept('quick','Swapped A['+i2+']='+arr[i2]+' ↔ A['+j+']='+arr[j]+'. Left-partition boundary now at index '+i2+'.');
           render(nm,{sw:new Set([i2,j]),pivot:hi,sorted:fixed});
           await sleepControlled(nm,delay(nm));
         }
@@ -850,19 +942,19 @@ async function go(nm,_skipReset=false){
       }
       if(r<sz){
         comps++;setT('comps-heap',comps);
-        setConcept('heap','Sift-down ['+i+']: compare '+(lg===l?'left child A['+l+']='+arr[l]:'parent A['+i+']='+arr[i])+' with right child A['+r+']='+arr[r]+'.'+(arr[r]>arr[lg]?' Right child is largest so far.':' Not the largest.'));
+        setConcept('heap','Sift-down ['+i+']: compare '+(lg===l?'left child A['+l+']='+arr[l]:'parent A['+i+']='+arr[i])+' with right child A['+r+']='+arr[r]+'.'+(arr[r]>arr[lg]?' Right child is largest.':' Not the largest.'));
         render(nm,{cmp:new Set([lg,r]),sorted:s2});await sleepControlled(nm,delay(nm));
         if(arr[r]>arr[lg])lg=r;
       }
       if(lg!==i&&!X()){
-        setConcept('heap','Sift-down ['+i+']: A['+lg+']='+arr[lg]+' > A['+i+']='+arr[i]+'. Swapping to restore max-heap property; continue sifting at '+lg+'.');
+        setConcept('heap','Sift-down ['+i+']: A['+lg+']='+arr[lg]+' > A['+i+']='+arr[i]+'. Swap to restore heap property; continue at '+lg+'.');
         [arr[i],arr[lg]]=[arr[lg],arr[i]];swaps++;setT('swaps-heap',swaps);
         render(nm,{sw:new Set([i,lg]),sorted:s2});await sleepControlled(nm,delay(nm));
         await sd(sz,lg);
-      } else if(!X()){setConcept('heap','Sift-down ['+i+']: A['+i+']='+arr[i]+' is the largest among its children. Heap property satisfied here.');}
+      }else if(!X())setConcept('heap','Sift-down ['+i+']: A['+i+']='+arr[i]+' is the largest among its children. Heap property satisfied here.');
     }
     for(let i=(n>>1)-1;i>=0&&!X();i--){setConcept('heap','Building max-heap: sift-down at index '+i+' (value '+arr[i]+').');await sd(n,i);}
-    for(let i=n-1;i>0&&!X();i--){setConcept('heap','Extract max: swap root A[0]='+arr[0]+' with A['+i+']='+arr[i]+'. Max is now placed at end. Sift-down new root.');[arr[0],arr[i]]=[arr[i],arr[0]];swaps++;extr++;setT('swaps-heap',swaps);setT('x1-heap',extr);const s2=s2ForSz(i);render(nm,{sw:new Set([0,i]),sorted:s2});await sleepControlled(nm,delay(nm));await sd(i,0)}
+    for(let i=n-1;i>0&&!X();i--){setConcept('heap','Extract max: swap root A[0]='+arr[0]+' with A['+i+']='+arr[i]+'. Max placed at end. Sift-down new root.');[arr[0],arr[i]]=[arr[i],arr[0]];swaps++;extr++;setT('swaps-heap',swaps);setT('x1-heap',extr);const s2=s2ForSz(i);render(nm,{sw:new Set([0,i]),sorted:s2});await sleepControlled(nm,delay(nm));await sd(i,0)}
   }
   else if(nm==='counting'){
     const mn=Math.min(...arr),mx=Math.max(...arr),k=mx-mn+1;setT('x1-counting',k);
@@ -910,7 +1002,7 @@ async function go(nm,_skipReset=false){
     ensureRadixBuckets(base);
     renderRadixBoard();
     const arrayEl=$('radix-array');
-    if(!arrayEl){S.running=false;S.paused=false;updatePauseBtn(nm);return;}
+    if(!arrayEl){D[nm].phase='idle';updatePauseBtn(nm);return;}
     let writes=0;
     for(let dig=0;dig<d&&!X();dig++){
       setT('x2-radix',(dig+1)+'/'+d);
@@ -1066,9 +1158,8 @@ async function go(nm,_skipReset=false){
     if(!X()&&isSorted(arr))render('bogo',{sorted:new Set(Array.from({length:n},(_,i)=>i))});
   }
 
-  if(!X() && nm!=='bogo')render(nm,{sorted:new Set(Array.from({length:n},(_,i)=>i))});
-  S.running=false;S.paused=false;
-  if(!_skipReset)updatePauseBtn(nm);
+  if(!X()&&nm!=='bogo')render(nm,{sorted:new Set(Array.from({length:n},(_,i)=>i))});
+  if(!X()&&!_recording){D[nm].phase='idle';updatePauseBtn(nm);updateStepUI(nm);}
 }
 
 // COMPLEXITY CHART DATA
